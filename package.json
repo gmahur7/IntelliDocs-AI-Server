@@ -16,7 +16,9 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "ts-node-dev --transpile-only -r tsconfig-paths/register prisma/seed.ts"
+    "seed": "ts-node-dev --transpile-only -r tsconfig-paths/register prisma/seed.ts",
+    "commit": "cz",
+    "commit:check": "commitlint --from=HEAD~1 --to=HEAD --verbose"
   },
   "lint-staged": {
     "*.{ts,js,json,md,yml,yaml}": [
@@ -28,6 +30,11 @@
   },
   "prisma": {
     "seed": "ts-node-dev --transpile-only prisma/seed.ts"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-git"
+    }
   },
   "engines": {
     "node": ">=22.0.0"
@@ -47,11 +54,15 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@eslint/js": "^10.0.1",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
+    "commitizen": "^4.3.1",
+    "cz-git": "^1.12.0",
     "eslint": "^10.2.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
