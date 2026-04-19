@@ -1,4 +1,4 @@
-# Production-Ready Node.js Backend 
+# Production-Ready Node.js Backend
 
 Express + TypeScript + PostgreSQL + Prisma backend template with layered architecture and production-grade tooling.
 
@@ -39,7 +39,7 @@ prisma/
 1. Install dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 2. Configure environment:
@@ -51,39 +51,39 @@ cp .env.example .env
 3. Start PostgreSQL (local or Docker), then run migrations:
 
 ```bash
-npm run prisma:migrate
+pnpm run prisma:migrate
 ```
 
 4. Generate Prisma client:
 
 ```bash
-npm run prisma:generate
+pnpm run prisma:generate
 ```
 
 5. Seed database:
 
 ```bash
-npm run seed
+pnpm run seed
 ```
 
 6. Run development server:
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Scripts
 
-- `npm run dev` - start dev server with auto-reload
-- `npm run build` - compile production build
-- `npm run start` - run compiled app
-- `npm run lint` - run ESLint
-- `npm run lint:fix` - fix lint issues
-- `npm run format` - format code with Prettier
-- `npm run prisma:generate` - generate Prisma client
-- `npm run prisma:migrate` - run Prisma migrations
-- `npm run prisma:studio` - open Prisma Studio
-- `npm run seed` - seed database
+- `pnpm run dev` - start dev server with auto-reload
+- `pnpm run build` - compile production build
+- `pnpm run start` - run compiled app
+- `pnpm run lint` - run ESLint
+- `pnpm run lint:fix` - fix lint issues
+- `pnpm run format` - format code with Prettier
+- `pnpm run prisma:generate` - generate Prisma client
+- `pnpm run prisma:migrate` - run Prisma migrations
+- `pnpm run prisma:studio` - open Prisma Studio
+- `pnpm run seed` - seed database
 
 ## Implemented Endpoints
 

@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: backend_postgres
     restart: unless-stopped
     environment:
@@ -12,6 +12,15 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
   api:
     build:
       context: .
@@ -20,11 +29,13 @@ services:
     restart: unless-stopped
     depends_on:
       - db
+      - ollama
     env_file:
       - .env
     ports:
       - "4000:4000"
-    command: sh -c "npm run prisma:generate && npm run start"
+    command: sh -c "pnpm run prisma:generate && pnpm run start"
 
 volumes:
   postgres_data:
+  ollama_data:

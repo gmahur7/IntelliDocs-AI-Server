@@ -1,8 +1,9 @@
 {
-  "name": "production-ready-node-backend",
+  "name": "RAG",
   "version": "1.0.0",
-  "description": "Production-ready Node.js backend with Express, TypeScript, PostgreSQL, and Prisma",
+  "description": "RAG backend with Express, TypeScript, PostgreSQL, and Prisma",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "main": "dist/src/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --exit-child --ignore-watch node_modules -r tsconfig-paths/register src/server.ts",

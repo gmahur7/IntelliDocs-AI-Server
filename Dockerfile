@@ -1,14 +1,16 @@
 FROM node:22-alpine AS base
 
+RUN corepack enable pnpm
+
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 ARG DATABASE_URL="postgresql://postgres:postgres@localhost:5432/postgres?schema=public"
 ENV DATABASE_URL=$DATABASE_URL
-RUN npm run prisma:generate
-RUN npm run build
+RUN pnpm run prisma:generate
+RUN pnpm run build
 
 EXPOSE 4000
-CMD ["npm", "run", "start"]
+CMD ["pnpm", "run", "start"]
