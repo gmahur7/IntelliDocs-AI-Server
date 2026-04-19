@@ -1,7 +1,7 @@
 {
-  "name": "Node Initial Setup",
+  "name": "IntelliDocs Backend",
   "version": "1.0.0",
-  "description": "Node Initial Setup with Express, TypeScript, PostgreSQL, and Prisma",
+  "description": "IntelliDocs: RAG API backend—ingest client PDF and TXT documents, index them for retrieval, and answer natural-language questions grounded in those files.",
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "main": "dist/src/server.js",

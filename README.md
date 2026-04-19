@@ -1,8 +1,14 @@
-# Production-Ready Node.js Backend
+# IntelliDocs
 
-Express + TypeScript + PostgreSQL + Prisma backend template with layered architecture and production-grade tooling.
+IntelliDocs is a retrieval-augmented generation (RAG) backend. Clients upload **PDF** and **TXT** documents; the service prepares them for search, and clients can ask **any question** about the material in those files and receive answers informed by the ingested content.
 
-## Tech Stack
+## What it does
+
+- Accepts document uploads (PDF and plain text) from clients.
+- Stores and indexes document content for semantic retrieval.
+- Exposes an API for questions so responses stay tied to the supplied documents rather than generic model knowledge alone.
+
+## Tech stack
 
 - Node.js (LTS)
 - Express.js
@@ -13,7 +19,7 @@ Express + TypeScript + PostgreSQL + Prisma backend template with layered archite
 - Pino
 - ESLint + Prettier + Husky + lint-staged
 
-## Project Structure
+## Project structure
 
 ```text
 src/
@@ -34,7 +40,7 @@ prisma/
 .env.example
 ```
 
-## Quick Start
+## Quick start
 
 1. Install dependencies:
 
@@ -85,14 +91,14 @@ pnpm run dev
 - `pnpm run prisma:studio` - open Prisma Studio
 - `pnpm run seed` - seed database
 
-## Implemented Endpoints
+## HTTP API
 
-- `GET /health`
-- `POST /users`
-- `GET /users`
-- `GET /users/:id`
-- `PATCH /users/:id`
-- `DELETE /users/:id`
+- `GET /health` — service health
+- `POST /users` — create user
+- `GET /users` — list users
+- `GET /users/:id` — get user by id
+- `PATCH /users/:id` — update user
+- `DELETE /users/:id` — delete user
 
 ## Docker
 
