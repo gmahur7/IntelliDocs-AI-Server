@@ -71,7 +71,6 @@ export class AuthService {
       env.JWT_ACCESS_SECRET,
       {
         expiresIn,
-        subject: payload.sub,
       },
     );
   }
