@@ -9,8 +9,38 @@ type RequestSchemas = {
   query?: ZodType;
 };
 
-function mapZodErrors(error: ZodError): string[] {
-  return error.issues.map((issue) => `${issue.path.join(".") || "value"}: ${issue.message}`);
+type ZodLikeIssue = { path: unknown; message: string };
+
+function zodErrorIssues(error: unknown): ZodLikeIssue[] {
+  if (error instanceof ZodError) {
+    return error.issues;
+  }
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "issues" in error &&
+    Array.isArray((error as { issues: unknown }).issues)
+  ) {
+    return (error as { issues: ZodLikeIssue[] }).issues;
+  }
+  return [];
+}
+
+function mapZodIssues(issues: ZodLikeIssue[]): string[] {
+  return issues.map((issue) => {
+    const pathStr = Array.isArray(issue.path) ? issue.path.map(String).join(".") : "value";
+    const msg = typeof issue.message === "string" ? issue.message : "Invalid input";
+    return `${pathStr || "value"}: ${msg}`;
+  });
+}
+
+function setValidatedQuery(req: Request, value: Request["query"]): void {
+  Object.defineProperty(req, "query", {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
 
 export function validateRequest(schemas: RequestSchemas) {
@@ -23,11 +53,17 @@ export function validateRequest(schemas: RequestSchemas) {
         req.params = schemas.params.parse(req.params) as Request["params"];
       }
       if (schemas.query) {
-        req.query = schemas.query.parse(req.query) as Request["query"];
+        const parsedQuery = schemas.query.parse(req.query) as Request["query"];
+        setValidatedQuery(req, parsedQuery);
       }
       next();
     } catch (error) {
-      const messages = mapZodErrors(error as ZodError);
+      const issues = zodErrorIssues(error);
+      if (issues.length === 0) {
+        next(error as Error);
+        return;
+      }
+      const messages = mapZodIssues(issues);
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: "Validation failed",
         errors: messages,

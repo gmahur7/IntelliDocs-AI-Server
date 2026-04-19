@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -8,11 +8,15 @@ async function main(): Promise<void> {
       email: "admin@example.com",
     },
     update: {
-      name: "Admin User",
+      firstName: "Admin",
+      lastName: "User",
+      role: Role.ADMIN,
     },
     create: {
-      name: "Admin User",
+      firstName: "Admin",
+      lastName: "User",
       email: "admin@example.com",
+      role: Role.ADMIN,
     },
   });
 }
