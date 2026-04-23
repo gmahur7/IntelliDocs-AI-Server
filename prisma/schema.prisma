@@ -12,6 +12,13 @@ enum Role {
   GUEST
 }
 
+enum DocumentStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
 model User {
   id         String    @id @default(uuid())
   firstName  String
@@ -27,4 +34,36 @@ model User {
   lastLoginIp String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+  documents  Document[]
+}
+
+model Document {
+  id         String         @id @default(uuid())
+  userId     String
+  user       User           @relation(fields: [userId], references: [id])
+  fileKey    String         @unique
+  fileUrl    String
+  mimeType   String
+  status     DocumentStatus @default(PENDING)
+  error      String?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  chunks     DocumentChunk[]
+
+  @@index([userId, status])
+}
+
+model DocumentChunk {
+  id         String    @id @default(uuid())
+  documentId String
+  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  seq        Int
+  text       String
+  tokenCount Int?
+  embedding  Unsupported("vector(768)")
+  createdAt  DateTime  @default(now())
+
+  @@index([documentId, seq])
+  @@index([userId, documentId])
 }

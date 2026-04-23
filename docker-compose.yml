@@ -1,16 +1,16 @@
 services:
-  db:
+  vector-db:
     image: pgvector/pgvector:pg16
-    container_name: backend_postgres
+    container_name: backend_vector_postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: app_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - vector_postgres_data:/var/lib/postgresql/data
 
   ollama:
     image: ollama/ollama:latest
@@ -28,7 +28,7 @@ services:
     container_name: backend_api
     restart: unless-stopped
     depends_on:
-      - db
+      - vector-db
       - ollama
     env_file:
       - .env
@@ -37,5 +37,5 @@ services:
     command: sh -c "pnpm run prisma:generate && pnpm run start"
 
 volumes:
-  postgres_data:
+  vector_postgres_data:
   ollama_data:
