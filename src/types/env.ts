@@ -10,4 +10,15 @@ export interface EnvironmentVariables {
   B2_ENDPOINT: string;
   B2_REGION?: string;
   B2_S3_REGION: string;
+  OLLAMA_BASE_URL: string;
+  OLLAMA_CHAT_MODEL: string;
+  OLLAMA_EMBED_MODEL: string;
+  RABBITMQ_URL: string;
+  RABBITMQ_INGEST_QUEUE: string;
+  RABBITMQ_INGEST_DLQ: string;
+  RABBITMQ_PREFETCH_COUNT: number;
+  RABBITMQ_MAX_RETRIES: number;
+  RAG_CHUNK_SIZE: number;
+  RAG_CHUNK_OVERLAP: number;
+  RAG_DEFAULT_TOP_K: number;
 }

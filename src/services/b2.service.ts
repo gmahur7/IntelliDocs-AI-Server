@@ -1,5 +1,6 @@
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
   S3Client,
@@ -135,6 +136,24 @@ export class B2Service {
       };
     } catch (error) {
       mapS3Error(error, "Failed to read file metadata.");
+    }
+  }
+
+  async downloadFile(key: string): Promise<Buffer> {
+    try {
+      const out = await getClient().send(
+        new GetObjectCommand({
+          Bucket: env.B2_BUCKET_NAME,
+          Key: key,
+        }),
+      );
+      const bytes = await out.Body?.transformToByteArray();
+      if (!bytes) {
+        throw new AppError("File body is empty.", HTTP_STATUS.NOT_FOUND);
+      }
+      return Buffer.from(bytes);
+    } catch (error) {
+      mapS3Error(error, "Failed to download file from storage.");
     }
   }
 

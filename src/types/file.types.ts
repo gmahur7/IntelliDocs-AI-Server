@@ -3,6 +3,7 @@ export interface FileUploadResponse {
   url: string;
   contentType: string;
   size: number;
+  documentId?: string;
 }
 
 export interface FileMetadataResponse {

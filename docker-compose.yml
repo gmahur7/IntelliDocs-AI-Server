@@ -21,6 +21,62 @@ services:
     volumes:
       - ollama_data:/root/.ollama
 
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: ollama_pull
+    depends_on:
+      ollama:
+        condition: service_started
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_EMBED_MODEL: ${OLLAMA_EMBED_MODEL:-nomic-embed-text}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        i=0
+        while [ "$$i" -lt 120 ]; do
+          if ollama list >/dev/null 2>&1; then
+            break
+          fi
+          i=$$((i+1))
+          sleep 1
+        done
+        ollama pull "$$OLLAMA_EMBED_MODEL"
+    restart: "no"
+
+  ollama-pull-chat:
+    image: ollama/ollama:latest
+    container_name: ollama_pull_chat
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_CHAT_MODEL: llama3.2:1b
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        ollama pull "$$OLLAMA_CHAT_MODEL"
+    restart: "no"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: app
+      RABBITMQ_DEFAULT_PASS: app
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   api:
     build:
       context: .
@@ -28,13 +84,50 @@ services:
     container_name: backend_api
     restart: unless-stopped
     depends_on:
-      - vector-db
-      - ollama
+      vector-db:
+        condition: service_started
+      ollama:
+        condition: service_started
+      ollama-pull:
+        condition: service_completed_successfully
+      ollama-pull-chat:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
     env_file:
       - .env
+    environment:
+      RABBITMQ_URL: amqp://app:app@rabbitmq:5672
+      DATABASE_URL: postgresql://postgres:postgres@vector-db:5432/app_db?schema=public&sslmode=disable
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_CHAT_MODEL: llama3.2:1b
     ports:
       - "4000:4000"
-    command: sh -c "pnpm run prisma:generate && pnpm run start"
+    command: sh -c "pnpm exec prisma migrate deploy && pnpm run prisma:generate && pnpm run start"
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backend_worker
+    restart: unless-stopped
+    depends_on:
+      vector-db:
+        condition: service_started
+      ollama:
+        condition: service_started
+      ollama-pull:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      RABBITMQ_URL: amqp://app:app@rabbitmq:5672
+      DATABASE_URL: postgresql://postgres:postgres@vector-db:5432/app_db?schema=public&sslmode=disable
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_CHAT_MODEL: llama3.2:1b
+    command: sh -c "pnpm exec prisma migrate deploy && pnpm run prisma:generate && pnpm run worker:ingest"
 
 volumes:
   vector_postgres_data:

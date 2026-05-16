@@ -39,6 +39,29 @@ const envSchema = z.object({
   B2_BUCKET_NAME: trimString.pipe(z.string().min(1, "B2_BUCKET_NAME is required")),
   B2_ENDPOINT: trimString.pipe(z.string().url("B2_ENDPOINT must be a valid URL")),
   B2_REGION: optionalB2Region,
+  OLLAMA_BASE_URL: trimString
+    .pipe(z.string().url("OLLAMA_BASE_URL must be a valid URL"))
+    .default("http://localhost:11434"),
+  OLLAMA_CHAT_MODEL: trimString
+    .pipe(z.string().min(1, "OLLAMA_CHAT_MODEL is required"))
+    .default("llama3.2:1b"),
+  OLLAMA_EMBED_MODEL: trimString
+    .pipe(z.string().min(1, "OLLAMA_EMBED_MODEL is required"))
+    .default("nomic-embed-text"),
+  RABBITMQ_URL: trimString
+    .pipe(z.string().url("RABBITMQ_URL must be a valid URL"))
+    .default("amqp://localhost:5672"),
+  RABBITMQ_INGEST_QUEUE: trimString
+    .pipe(z.string().min(1, "RABBITMQ_INGEST_QUEUE is required"))
+    .default("doc.ingest.parse"),
+  RABBITMQ_INGEST_DLQ: trimString
+    .pipe(z.string().min(1, "RABBITMQ_INGEST_DLQ is required"))
+    .default("doc.ingest.deadletter"),
+  RABBITMQ_PREFETCH_COUNT: z.coerce.number().int().positive().default(5),
+  RABBITMQ_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
+  RAG_CHUNK_SIZE: z.coerce.number().int().positive().default(900),
+  RAG_CHUNK_OVERLAP: z.coerce.number().int().nonnegative().default(150),
+  RAG_DEFAULT_TOP_K: z.coerce.number().int().positive().default(5),
 });
 
 function b2S3RegionFromEndpoint(endpoint: string): string | null {

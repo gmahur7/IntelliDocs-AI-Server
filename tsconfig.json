@@ -14,45 +14,19 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@config/*": [
-        "src/config/*"
-      ],
-      "@controllers/*": [
-        "src/controllers/*"
-      ],
-      "@services/*": [
-        "src/services/*"
-      ],
-      "@repositories/*": [
-        "src/repositories/*"
-      ],
-      "@routes/*": [
-        "src/routes/*"
-      ],
-      "@middlewares/*": [
-        "src/middlewares/*"
-      ],
-      "@validators/*": [
-        "src/validators/*"
-      ],
-      "@utils/*": [
-        "src/utils/*"
-      ],
-      "@types/*": [
-        "src/types/*"
-      ],
-      "@constants/*": [
-        "src/constants/*"
-      ]
+      "@config/*": ["src/config/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@services/*": ["src/services/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@routes/*": ["src/routes/*"],
+      "@middlewares/*": ["src/middlewares/*"],
+      "@validators/*": ["src/validators/*"],
+      "@utils/*": ["src/utils/*"],
+      "@types/*": ["src/types/*"],
+      "@constants/*": ["src/constants/*"],
+      "@clients/*": ["src/clients/*"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "prisma/**/*.ts",
-    "prisma.config.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "prisma.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }
