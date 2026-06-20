@@ -3,10 +3,10 @@ import { Prisma } from "@prisma/client";
 import multer from "multer";
 import { ZodError } from "zod";
 
-import { env } from "@config/env";
 import { logger } from "@config/logger";
 import { HTTP_STATUS } from "@constants/http-status";
 import { AppError } from "@utils/app-error";
+import { sendError } from "@utils/api-response";
 
 export function errorHandler(
   error: unknown,
@@ -54,9 +54,5 @@ export function errorHandler(
     message,
   );
 
-  res.status(statusCode).json({
-    message,
-    ...(details ? { details } : {}),
-    ...(env.NODE_ENV === "development" && error instanceof Error ? { stack: error.stack } : {}),
-  });
+  sendError(res, statusCode, message, details);
 }

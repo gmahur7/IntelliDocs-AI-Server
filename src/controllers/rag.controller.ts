@@ -5,8 +5,8 @@ import { DocumentChunkRepository } from "@repositories/document-chunk.repository
 import { DocumentService } from "@services/document.service";
 import { RagService } from "@services/rag.service";
 import { IngestProducer } from "../queue/ingest.producer";
-import type { AskQuestionResponse } from "../types/rag.types";
 import { AppError } from "@utils/app-error";
+import { sendSuccess } from "@utils/api-response";
 import { asyncHandler } from "@utils/async-handler";
 
 const ragService = new RagService();
@@ -16,12 +16,8 @@ const ingestProducer = new IngestProducer();
 
 export const askQuestion = asyncHandler(
   async (
-    req: Request<
-      unknown,
-      AskQuestionResponse,
-      { question: string; documentId?: string; topK?: number }
-    >,
-    res: Response<AskQuestionResponse>,
+    req: Request<unknown, unknown, { question: string; documentId?: string; topK?: number }>,
+    res: Response,
   ): Promise<void> => {
     if (!req.user) {
       throw new AppError("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
@@ -32,7 +28,7 @@ export const askQuestion = asyncHandler(
       documentId: req.body.documentId,
       topK: req.body.topK,
     });
-    res.status(HTTP_STATUS.OK).json(data);
+    sendSuccess(res, HTTP_STATUS.OK, data);
   },
 );
 
@@ -41,7 +37,7 @@ export const getUserDocuments = asyncHandler(async (req: Request, res: Response)
     throw new AppError("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
   }
   const documents = await documentService.getByUserId(req.user.id);
-  res.status(HTTP_STATUS.OK).json(documents);
+  sendSuccess(res, HTTP_STATUS.OK, documents);
 });
 
 export const getDocumentById = asyncHandler(
@@ -53,7 +49,7 @@ export const getDocumentById = asyncHandler(
     if (!document) {
       throw new AppError("Document not found", HTTP_STATUS.NOT_FOUND);
     }
-    res.status(HTTP_STATUS.OK).json(document);
+    sendSuccess(res, HTTP_STATUS.OK, document);
   },
 );
 
@@ -70,7 +66,7 @@ export const getDocumentChunks = asyncHandler(
       req.params.id,
       req.user.id,
     );
-    res.status(HTTP_STATUS.OK).json({
+    sendSuccess(res, HTTP_STATUS.OK, {
       documentId: req.params.id,
       count: chunks.length,
       chunks,
@@ -94,6 +90,6 @@ export const reindexDocument = asyncHandler(
       fileKey: document.fileKey,
       ingestionVersion: 1,
     });
-    res.status(HTTP_STATUS.OK).json({ message: "Reindex queued", documentId: document.id });
+    sendSuccess(res, HTTP_STATUS.OK, { documentId: document.id }, "Reindex queued");
   },
 );

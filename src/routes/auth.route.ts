@@ -7,9 +7,9 @@ import { signinSchema, signupSchema } from "@validators/auth.validator";
 
 const authRouter = Router();
 
-authRouter.post("/signup", validateRequest({ body: signupSchema }), signup);
-authRouter.post("/signin", validateRequest({ body: signinSchema }), signin);
-authRouter.post("/signout", requireAuth, signout);
+authRouter.post("/sign-up", validateRequest({ body: signupSchema }), signup);
+authRouter.post("/sign-in", validateRequest({ body: signinSchema }), signin);
+authRouter.post("/sign-out", requireAuth, signout);
 authRouter.get("/me", requireAuth, me);
 
 export { authRouter };
