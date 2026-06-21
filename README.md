@@ -108,6 +108,10 @@ Use Docker Compose for local API + PostgreSQL:
 docker compose up --build
 ```
 
+## Roadmap & missing features
+
+See [ROADMAP.md](ROADMAP.md) for planned features, known gaps, and production-readiness items.
+
 ## Notes
 
 - Husky is configured, but Git hooks are installed only after `git init` is available in this folder.
