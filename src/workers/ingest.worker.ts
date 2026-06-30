@@ -5,6 +5,7 @@ import { EmbeddingService } from "@services/embedding.service";
 import { B2Service } from "@services/b2.service";
 import { ChunkingService } from "@services/chunking.service";
 import { FileParserService } from "@services/file-parser.service";
+import { TokenizerService } from "@services/tokenizer.service";
 import { env } from "@config/env";
 import { consumeIngestMessages, publishIngestMessage } from "../queue/rabbitmq.client";
 import { normalizeText } from "@utils/text-normalizer";
@@ -18,6 +19,7 @@ export class IngestWorker {
     private readonly fileParserService: FileParserService = new FileParserService(),
     private readonly chunkingService: ChunkingService = new ChunkingService(),
     private readonly embeddingService: EmbeddingService = new EmbeddingService(),
+    private readonly tokenizerService: TokenizerService = new TokenizerService(),
   ) {}
 
   async processDocumentIngestRequested(payload: DocumentIngestRequestedPayload): Promise<void> {
@@ -40,7 +42,7 @@ export class IngestWorker {
           userId: payload.userId,
           seq: index,
           text: chunkText,
-          tokenCount: chunkText.length,
+          tokenCount: this.tokenizerService.countTokens(chunkText),
           embedding: embeddings[index],
         })),
       );

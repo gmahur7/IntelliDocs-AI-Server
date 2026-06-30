@@ -62,6 +62,17 @@ export async function publishIngestMessage(
   });
 }
 
+export async function checkRabbitMqHealth(): Promise<boolean> {
+  try {
+    const ch = await getChannel();
+    await ch.checkQueue(env.RABBITMQ_INGEST_QUEUE);
+    return true;
+  } catch (error) {
+    logger.warn({ err: error }, "RabbitMQ health check failed.");
+    return false;
+  }
+}
+
 export async function consumeIngestMessages(
   onMessage: (message: ConsumeMessage, ch: Channel) => Promise<void>,
 ): Promise<void> {
