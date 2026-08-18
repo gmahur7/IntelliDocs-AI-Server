@@ -1,6 +1,6 @@
 export function normalizeText(text: string): string {
   return text
-    .normalize("NFKC")
+    .normalize("NFC")
     .split("")
     .map((char) => {
       const code = char.charCodeAt(0);
@@ -16,8 +16,9 @@ export function normalizeText(text: string): string {
       return char;
     })
     .join("")
+    .replace(/\r\n?/g, "\n")
     .replace(/[ \t]+/g, " ")
-    .replace(/\r\n/g, "\n")
+    .replace(/ *\n */g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

@@ -31,24 +31,29 @@ export class IngestWorker {
         throw new Error(`Document not found: ${payload.documentId}`);
       }
       const fileBuffer = await this.b2Service.downloadFile(payload.fileKey);
-      const rawText = await this.fileParserService.parseByMime(fileBuffer, document.mimeType);
-      const normalizedText = normalizeText(rawText);
-      const chunks = this.chunkingService.chunkText(normalizedText);
-      const embeddings = await this.embeddingService.embedMany(chunks);
+      const pages = await this.fileParserService.parseByMime(fileBuffer, document.mimeType);
+      const normalizedPages = pages.map((page) => ({
+        pageNumber: page.pageNumber,
+        text: normalizeText(page.text),
+      }));
+      const chunks = this.chunkingService.chunkPages(normalizedPages);
+      const embeddings = await this.embeddingService.embedMany(chunks.map((chunk) => chunk.text));
       await this.documentChunkRepository.deleteByDocumentId(payload.documentId);
       await this.documentChunkRepository.createMany(
-        chunks.map((chunkText, index) => ({
+        chunks.map((chunk, index) => ({
           documentId: payload.documentId,
           userId: payload.userId,
           seq: index,
-          text: chunkText,
-          tokenCount: this.tokenizerService.countTokens(chunkText),
+          text: chunk.text,
+          tokenCount: this.tokenizerService.countTokens(chunk.text),
+          pageStart: chunk.pageStart,
+          pageEnd: chunk.pageEnd,
           embedding: embeddings[index],
         })),
       );
       await this.documentService.markReady(payload.documentId);
       logger.info(
-        { documentId: payload.documentId, chunkCount: chunks.length },
+        { documentId: payload.documentId, pageCount: pages.length, chunkCount: chunks.length },
         "Document ingestion completed.",
       );
     } catch (error) {

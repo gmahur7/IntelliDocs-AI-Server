@@ -61,6 +61,8 @@ model DocumentChunk {
   seq        Int
   text       String
   tokenCount Int?
+  pageStart  Int?
+  pageEnd    Int?
   embedding  Unsupported("vector(768)")
   createdAt  DateTime  @default(now())
 
