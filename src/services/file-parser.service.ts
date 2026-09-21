@@ -1,4 +1,5 @@
 import { PDFParse } from "pdf-parse";
+import { PermanentIngestError } from "@utils/ingest-error";
 
 export type ParsedPage = {
   pageNumber: number;
@@ -22,6 +23,6 @@ export class FileParserService {
     if (mimeType === "text/plain") {
       return [{ pageNumber: 1, text: buffer.toString("utf-8") }];
     }
-    throw new Error(`Unsupported mime type: ${mimeType}`);
+    throw new PermanentIngestError(`Unsupported mime type: ${mimeType}`);
   }
 }

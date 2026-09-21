@@ -62,6 +62,8 @@ const envSchema = z.object({
   RAG_CHUNK_SIZE: z.coerce.number().int().positive().default(900),
   RAG_CHUNK_OVERLAP: z.coerce.number().int().nonnegative().default(150),
   RAG_DEFAULT_TOP_K: z.coerce.number().int().positive().default(5),
+  RAG_MIN_PAGE_TEXT_CHARS: z.coerce.number().int().nonnegative().default(12),
+  RAG_MAX_SCANNED_PAGE_RATIO: z.coerce.number().min(0).max(1).default(0.8),
 });
 
 function b2S3RegionFromEndpoint(endpoint: string): string | null {

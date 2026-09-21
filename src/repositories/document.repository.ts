@@ -35,12 +35,18 @@ export class DocumentRepository {
     });
   }
 
-  async updateStatus(params: { id: string; status: DocumentStatus; error?: string | null }) {
+  async updateStatus(params: {
+    id: string;
+    status: DocumentStatus;
+    error?: string | null;
+    warning?: string | null;
+  }) {
     return prisma.document.update({
       where: { id: params.id },
       data: {
         status: params.status,
         error: params.error ?? null,
+        warning: params.warning ?? null,
       },
     });
   }

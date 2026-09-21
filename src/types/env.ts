@@ -21,4 +21,6 @@ export interface EnvironmentVariables {
   RAG_CHUNK_SIZE: number;
   RAG_CHUNK_OVERLAP: number;
   RAG_DEFAULT_TOP_K: number;
+  RAG_MIN_PAGE_TEXT_CHARS: number;
+  RAG_MAX_SCANNED_PAGE_RATIO: number;
 }

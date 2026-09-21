@@ -13,9 +13,6 @@ healthRouter.get("/", (_req, res) => {
   sendSuccess(res, HTTP_STATUS.OK, { status: "ok" });
 });
 
-// Readiness: are all downstream dependencies reachable?
-// Returns 200 when everything is up, 503 when any dependency is down so
-// orchestrators can pull the instance out of rotation.
 healthRouter.get(
   "/ready",
   asyncHandler(async (_req, res) => {

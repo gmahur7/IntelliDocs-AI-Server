@@ -46,6 +46,7 @@ model Document {
   mimeType   String
   status     DocumentStatus @default(PENDING)
   error      String?
+  warning    String?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   chunks     DocumentChunk[]
