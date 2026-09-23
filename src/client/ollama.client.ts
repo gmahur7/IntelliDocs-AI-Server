@@ -1,8 +1,10 @@
+import { Readable } from "node:stream";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import {
   OllamaChatMessage,
   OllamaChatRequest,
   OllamaChatResponse,
+  OllamaChatStreamChunk,
   OllamaEmbedRequest,
   OllamaEmbedResponse,
 } from "../types/ollama.types";
@@ -44,6 +46,51 @@ export class OllamaClient {
     }
   }
 
+  async *chatStream(messages: OllamaChatMessage[]): AsyncGenerator<OllamaChatStreamChunk> {
+    const requestBody: OllamaChatRequest = {
+      model: this.chatModel,
+      messages,
+      stream: true,
+      options: {
+        num_ctx: 2048,
+      },
+    };
+
+    let stream: Readable;
+    try {
+      // timeout: 0 overrides the instance timeout, which would abort a long generation.
+      const response = await this.http.post<Readable>("/api/chat", requestBody, {
+        responseType: "stream",
+        timeout: 0,
+      });
+      stream = response.data;
+    } catch (error) {
+      throw new Error(`Ollama chat stream failed: ${await this.extractStreamError(error)}`, {
+        cause: error,
+      });
+    }
+
+    // Ollama emits NDJSON; a single chunk may split a line, so buffer until a newline.
+    let buffer = "";
+    for await (const part of stream) {
+      buffer += (part as Buffer).toString("utf8");
+      let newline = buffer.indexOf("\n");
+      while (newline !== -1) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
+        if (line) {
+          yield JSON.parse(line) as OllamaChatStreamChunk;
+        }
+        newline = buffer.indexOf("\n");
+      }
+    }
+
+    const tail = buffer.trim();
+    if (tail) {
+      yield JSON.parse(tail) as OllamaChatStreamChunk;
+    }
+  }
+
   async embed(input: string | string[]): Promise<OllamaEmbedResponse> {
     const requestBody: OllamaEmbedRequest = {
       model: this.embedModel,
@@ -79,5 +126,23 @@ export class OllamaClient {
       return error.message;
     }
     return "Unknown error";
+  }
+
+  // With responseType "stream" an error body arrives as a Readable, not parsed JSON,
+  // so it has to be drained before extractError can find the message.
+  private async extractStreamError(error: unknown): Promise<string> {
+    if (axios.isAxiosError(error) && error.response?.data instanceof Readable) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of error.response.data) {
+        chunks.push(chunk as Buffer);
+      }
+      const body = Buffer.concat(chunks).toString("utf8");
+      try {
+        return (JSON.parse(body) as { error?: string }).error ?? body;
+      } catch {
+        return body || error.message;
+      }
+    }
+    return this.extractError(error);
   }
 }
