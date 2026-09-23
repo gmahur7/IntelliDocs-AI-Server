@@ -1,19 +1,28 @@
 import { PDFParse } from "pdf-parse";
+import { PermanentIngestError } from "@utils/ingest-error";
+
+export type ParsedPage = {
+  pageNumber: number;
+  text: string;
+};
 
 export class FileParserService {
-  async parseByMime(buffer: Buffer, mimeType: string): Promise<string> {
+  async parseByMime(buffer: Buffer, mimeType: string): Promise<ParsedPage[]> {
     if (mimeType === "application/pdf") {
       const parser = new PDFParse({ data: buffer });
       try {
         const parsed = await parser.getText();
-        return parsed.text ?? "";
+        return parsed.pages.map((page) => ({
+          pageNumber: page.num,
+          text: page.text ?? "",
+        }));
       } finally {
         await parser.destroy();
       }
     }
     if (mimeType === "text/plain") {
-      return buffer.toString("utf-8");
+      return [{ pageNumber: 1, text: buffer.toString("utf-8") }];
     }
-    throw new Error(`Unsupported mime type: ${mimeType}`);
+    throw new PermanentIngestError(`Unsupported mime type: ${mimeType}`);
   }
 }

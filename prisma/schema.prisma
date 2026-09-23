@@ -46,6 +46,7 @@ model Document {
   mimeType   String
   status     DocumentStatus @default(PENDING)
   error      String?
+  warning    String?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   chunks     DocumentChunk[]
@@ -61,6 +62,8 @@ model DocumentChunk {
   seq        Int
   text       String
   tokenCount Int?
+  pageStart  Int?
+  pageEnd    Int?
   embedding  Unsupported("vector(768)")
   createdAt  DateTime  @default(now())
 

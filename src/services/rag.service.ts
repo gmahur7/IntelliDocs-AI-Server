@@ -11,10 +11,21 @@ type AskInput = {
   topK?: number;
 };
 
+function formatPageLabel(pageStart: number | null, pageEnd: number | null): string {
+  if (pageStart === null) {
+    return "";
+  }
+  if (pageEnd === null || pageEnd === pageStart) {
+    return ` p.${pageStart}`;
+  }
+  return ` p.${pageStart}-${pageEnd}`;
+}
+
 function buildPrompt(question: string, contextBlocks: string): string {
   return [
     "You are a grounded assistant for IntelliDocs.",
     "Answer using ONLY the context.",
+    "Cite the page number shown on each context block when you use it, e.g. (p.4).",
     "If the context does not contain the answer, reply exactly:",
     '"I could not find this in your uploaded documents."',
     "",
@@ -45,7 +56,10 @@ export class RagService {
       );
     }
     const contextBlocks = retrieved
-      .map((chunk, index) => `[chunk_${index + 1}] (${chunk.documentId}/${chunk.id}) ${chunk.text}`)
+      .map(
+        (chunk, index) =>
+          `[chunk_${index + 1}] (${chunk.documentId}/${chunk.id}${formatPageLabel(chunk.pageStart, chunk.pageEnd)}) ${chunk.text}`,
+      )
       .join("\n\n");
     const prompt = buildPrompt(input.question, contextBlocks);
     const answer = await this.ollamaService.chat([
@@ -64,6 +78,8 @@ export class RagService {
       citations: retrieved.map((chunk) => ({
         chunkId: chunk.id,
         documentId: chunk.documentId,
+        pageStart: chunk.pageStart,
+        pageEnd: chunk.pageEnd,
         score: chunk.score,
       })),
     };

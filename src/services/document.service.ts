@@ -35,11 +35,12 @@ export class DocumentService {
     });
   }
 
-  async markReady(documentId: string): Promise<void> {
+  async markReady(documentId: string, warning?: string): Promise<void> {
     await this.documentRepository.updateStatus({
       id: documentId,
       status: DocumentStatus.READY,
       error: null,
+      warning: warning ?? null,
     });
   }
 

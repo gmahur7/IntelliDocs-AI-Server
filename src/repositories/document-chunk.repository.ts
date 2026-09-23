@@ -7,6 +7,8 @@ type CreateChunkInput = {
   seq: number;
   text: string;
   tokenCount?: number;
+  pageStart?: number;
+  pageEnd?: number;
   embedding: number[];
 };
 
@@ -14,6 +16,8 @@ export type RetrievedChunk = {
   id: string;
   text: string;
   documentId: string;
+  pageStart: number | null;
+  pageEnd: number | null;
   score: number;
 };
 
@@ -32,12 +36,14 @@ export class DocumentChunkRepository {
       const vectorLiteral = `[${chunk.embedding.join(",")}]`;
       await prisma.$executeRawUnsafe(
         `
-        INSERT INTO "DocumentChunk" ("id", "documentId", "userId", "seq", "text", "tokenCount", "embedding", "createdAt")
-        VALUES ($1, $2, $3, $4, $5, $6, $7::vector, NOW())
+        INSERT INTO "DocumentChunk" ("id", "documentId", "userId", "seq", "text", "tokenCount", "pageStart", "pageEnd", "embedding", "createdAt")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::vector, NOW())
         ON CONFLICT ("documentId", "seq")
         DO UPDATE SET
           "text" = EXCLUDED."text",
           "tokenCount" = EXCLUDED."tokenCount",
+          "pageStart" = EXCLUDED."pageStart",
+          "pageEnd" = EXCLUDED."pageEnd",
           "embedding" = EXCLUDED."embedding",
           "userId" = EXCLUDED."userId"
         `,
@@ -47,6 +53,8 @@ export class DocumentChunkRepository {
         chunk.seq,
         chunk.text,
         chunk.tokenCount ?? null,
+        chunk.pageStart ?? null,
+        chunk.pageEnd ?? null,
         vectorLiteral,
       );
     }
@@ -64,6 +72,8 @@ export class DocumentChunkRepository {
         seq: true,
         text: true,
         tokenCount: true,
+        pageStart: true,
+        pageEnd: true,
         createdAt: true,
       },
     });
@@ -78,7 +88,7 @@ export class DocumentChunkRepository {
     const vectorLiteral = `[${params.queryEmbedding.join(",")}]`;
     const rows = await prisma.$queryRawUnsafe<RetrievedChunk[]>(
       `
-      SELECT c.id, c.text, c."documentId", (c.embedding <=> $1::vector) AS score
+      SELECT c.id, c.text, c."documentId", c."pageStart", c."pageEnd", (c.embedding <=> $1::vector) AS score
       FROM "DocumentChunk" c
       JOIN "Document" d ON d.id = c."documentId"
       WHERE d."userId" = $2
