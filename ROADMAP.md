@@ -40,7 +40,17 @@ client to "discard the token." A stolen/leaked JWT stays valid until it expires.
 `RagService.ask()` in [`src/services/rag.service.ts`](src/services/rag.service.ts) blocks
 until the full LLM response is ready. Ollama supports `stream: true`.
 
-- [ ] Stream tokens to the client via **Server-Sent Events** so answers render word-by-word.
+- [x] Stream tokens to the client via **Server-Sent Events** so answers render word-by-word.
+
+`POST /api/v1/ask/stream` emits `token` events as the model generates, then `citations`, then
+`done`; a mid-stream failure emits an `error` event. `POST /api/v1/ask` is unchanged and still
+returns the full answer in the JSON envelope. The client must use `fetch` + `ReadableStream`
+rather than `EventSource`, which cannot POST or send an `Authorization` header.
+
+Not yet done, if this needs to survive a proxy or heavier use:
+
+- [ ] Keepalive comment frames (`:ping`) for proxies with an idle timeout.
+- [ ] Cancel the in-flight Ollama request on client disconnect (`req.on("close")` → `AbortSignal`).
 
 ### 4. Conversational chat sessions (memory)
 

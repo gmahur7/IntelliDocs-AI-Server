@@ -1,7 +1,8 @@
 import { HTTP_STATUS } from "@constants/http-status";
 import { RetrievalService } from "@services/retrieval.service";
 import { OllamaService } from "@services/ollama.service";
-import type { AskQuestionResponse } from "../types/rag.types";
+import type { OllamaChatMessage } from "../types/ollama.types";
+import type { AskQuestionResponse, RagCitation, RagStreamResult } from "../types/rag.types";
 import { AppError } from "@utils/app-error";
 
 type AskInput = {
@@ -43,6 +44,24 @@ export class RagService {
   ) {}
 
   async ask(input: AskInput): Promise<AskQuestionResponse> {
+    const { messages, citations } = await this.prepare(input);
+    const answer = await this.ollamaService.chat(messages);
+    return { answer, citations };
+  }
+
+  /**
+   * Resolves retrieval before returning, so a retrieval failure still surfaces as a normal
+   * JSON error envelope — the caller has not written any response bytes yet. Returning an
+   * async generator instead would defer that guard until after the SSE headers are flushed.
+   */
+  async askStream(input: AskInput): Promise<RagStreamResult> {
+    const { messages, citations } = await this.prepare(input);
+    return { citations, tokens: this.ollamaService.chatStream(messages) };
+  }
+
+  private async prepare(
+    input: AskInput,
+  ): Promise<{ messages: OllamaChatMessage[]; citations: RagCitation[] }> {
     const retrieved = await this.retrievalService.retrieveTopK({
       userId: input.userId,
       query: input.question,
@@ -62,19 +81,18 @@ export class RagService {
       )
       .join("\n\n");
     const prompt = buildPrompt(input.question, contextBlocks);
-    const answer = await this.ollamaService.chat([
-      {
-        role: "system",
-        content:
-          "You must answer only from the provided context. Do not use outside knowledge and do not hallucinate.",
-      },
-      {
-        role: "user",
-        content: prompt,
-      },
-    ]);
     return {
-      answer,
+      messages: [
+        {
+          role: "system",
+          content:
+            "You must answer only from the provided context. Do not use outside knowledge and do not hallucinate.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
       citations: retrieved.map((chunk) => ({
         chunkId: chunk.id,
         documentId: chunk.documentId,

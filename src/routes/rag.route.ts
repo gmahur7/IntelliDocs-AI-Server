@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   askQuestion,
+  askQuestionStream,
   getDocumentById,
   getDocumentChunks,
   getUserDocuments,
@@ -14,6 +15,12 @@ import { askQuestionSchema, documentIdParamsSchema } from "@validators/rag.valid
 const ragRouter = Router();
 
 ragRouter.post("/ask", requireAuth, validateRequest({ body: askQuestionSchema }), askQuestion);
+ragRouter.post(
+  "/ask/stream",
+  requireAuth,
+  validateRequest({ body: askQuestionSchema }),
+  askQuestionStream,
+);
 ragRouter.get("/documents", requireAuth, getUserDocuments);
 ragRouter.get(
   "/documents/:id",

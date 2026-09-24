@@ -20,6 +20,15 @@ export class OllamaService {
     return response.message.content;
   }
 
+  async *chatStream(messages: OllamaChatMessage[]): AsyncGenerator<string> {
+    for await (const chunk of this.client.chatStream(messages)) {
+      const text = chunk.message?.content;
+      if (text) {
+        yield text;
+      }
+    }
+  }
+
   async embedText(text: string): Promise<number[]> {
     const response = await this.client.embed(text);
     return response.embeddings[0];

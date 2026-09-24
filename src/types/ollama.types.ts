@@ -18,6 +18,13 @@ export interface OllamaChatResponse {
   done: boolean;
 }
 
+export interface OllamaChatStreamChunk {
+  model: string;
+  message?: OllamaChatMessage;
+  done: boolean;
+  done_reason?: string;
+}
+
 export interface OllamaEmbedRequest {
   model: string;
   input: string | string[];

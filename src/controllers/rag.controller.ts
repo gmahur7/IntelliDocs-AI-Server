@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 
+import { logger } from "@config/logger";
 import { HTTP_STATUS } from "@constants/http-status";
 import { DocumentChunkRepository } from "@repositories/document-chunk.repository";
 import { DocumentService } from "@services/document.service";
@@ -8,6 +9,7 @@ import { IngestProducer } from "../queue/ingest.producer";
 import { AppError } from "@utils/app-error";
 import { sendSuccess } from "@utils/api-response";
 import { asyncHandler } from "@utils/async-handler";
+import { initSse, sendSseEvent } from "@utils/sse";
 
 const ragService = new RagService();
 const documentService = new DocumentService();
@@ -29,6 +31,41 @@ export const askQuestion = asyncHandler(
       topK: req.body.topK,
     });
     sendSuccess(res, HTTP_STATUS.OK, data);
+  },
+);
+
+export const askQuestionStream = asyncHandler(
+  async (
+    req: Request<unknown, unknown, { question: string; documentId?: string; topK?: number }>,
+    res: Response,
+  ): Promise<void> => {
+    if (!req.user) {
+      throw new AppError("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
+    }
+
+    const { citations, tokens } = await ragService.askStream({
+      userId: req.user.id,
+      question: req.body.question,
+      documentId: req.body.documentId,
+      topK: req.body.topK,
+    });
+
+    initSse(res);
+    try {
+      for await (const text of tokens) {
+        sendSseEvent(res, "token", { text });
+      }
+      sendSseEvent(res, "citations", { citations });
+      sendSseEvent(res, "done", {});
+    } catch (error) {
+      logger.error({ err: error, path: req.originalUrl }, "Ask stream failed");
+      sendSseEvent(res, "error", {
+        status: error instanceof AppError ? error.statusCode : HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: error instanceof AppError ? error.message : "Streaming failed",
+      });
+    } finally {
+      res.end();
+    }
   },
 );
 

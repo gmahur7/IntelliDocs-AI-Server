@@ -44,6 +44,16 @@ export function errorHandler(
     }
   }
 
+  // A streaming response has already sent its headers; sendError would throw ERR_HTTP_HEADERS_SENT.
+  if (res.headersSent) {
+    logger.error(
+      { err: error, path: req.originalUrl, method: req.method },
+      "Error after response started",
+    );
+    res.end();
+    return;
+  }
+
   logger.error(
     {
       err: error,
