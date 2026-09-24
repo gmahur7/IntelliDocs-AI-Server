@@ -18,7 +18,7 @@ export const createConversation = asyncHandler(
     }
     const conversation = await conversationService.create(req.user.id, {
       title: req.body.title,
-      documentId: req.body.documentId || "",
+      documentId: req.body.documentId ?? null,
     });
     sendSuccess(res, HTTP_STATUS.CREATED, conversation);
   },

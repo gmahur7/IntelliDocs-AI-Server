@@ -9,14 +9,14 @@ export type RagCitation = {
 export type AskQuestionResponse = {
   answer: string;
   citations: RagCitation[];
-  conversationId?: string;
+  conversationId: string;
 };
 
 export type RagStreamResult = {
   citations: RagCitation[];
   tokens: AsyncIterable<string>;
-  conversationId?: string;
-  onComplete?: (answer: string) => Promise<void>;
+  conversationId: string;
+  onComplete: (answer: string) => Promise<void>;
 };
 
 export type ChatTurn = {

@@ -67,9 +67,7 @@ export const askQuestionStream = asyncHandler(
         answer += text;
         sendSseEvent(res, "token", { text });
       }
-      if (onComplete) {
-        await onComplete(answer);
-      }
+      await onComplete(answer);
       sendSseEvent(res, "citations", { citations });
       sendSseEvent(res, "done", { conversationId });
     } catch (error) {

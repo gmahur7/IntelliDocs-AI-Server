@@ -83,7 +83,7 @@ model Conversation {
   userId     String
   user       User      @relation(fields: [userId], references: [id])
   title      String?
-  documentId String
+  documentId String?
   messages   Message[]
 
   createdAt DateTime @default(now())

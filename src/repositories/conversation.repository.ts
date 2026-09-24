@@ -3,7 +3,7 @@ import { prisma } from "@config/prisma";
 import type { MessageCreateFields } from "../types/message.types";
 
 export class ConversationRepository {
-  async create(data: { userId: string; title?: string; documentId: string }) {
+  async create(data: { userId: string; title?: string; documentId?: string | null }) {
     return prisma.conversation.create({ data });
   }
 

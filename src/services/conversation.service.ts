@@ -12,7 +12,7 @@ export class ConversationService {
     private readonly tokenizerService: TokenizerService = new TokenizerService(),
   ) {}
 
-  async create(userId: string, input: { title?: string; documentId: string }) {
+  async create(userId: string, input: { title?: string; documentId?: string | null }) {
     return this.conversationRepository.create({ userId, ...input });
   }
 

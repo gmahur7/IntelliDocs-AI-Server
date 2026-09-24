@@ -54,46 +54,48 @@ export class RagService {
   ) {}
 
   async ask(input: AskInput): Promise<AskQuestionResponse> {
-    const { messages, citations, isFirstTurn } = await this.prepare(input);
+    const { messages, citations, isFirstTurn, documentId } = await this.prepare(input);
+    const conversationId = await this.resolveConversationId(input, documentId);
     const answer = await this.ollamaService.chat(messages);
-    if (input.conversationId) {
-      await this.conversationService.saveTurn({
-        conversationId: input.conversationId,
-        userId: input.userId,
-        question: input.question,
-        answer,
-        citations,
-        isFirstTurn,
-      });
-    }
-    return { answer, citations, conversationId: input.conversationId };
+    await this.conversationService.saveTurn({
+      conversationId,
+      userId: input.userId,
+      question: input.question,
+      answer,
+      citations,
+      isFirstTurn,
+    });
+    return { answer, citations, conversationId };
   }
 
-  /**
-   * Resolves retrieval before returning, so a retrieval failure still surfaces as a normal
-   * JSON error envelope — the caller has not written any response bytes yet. Returning an
-   * async generator instead would defer that guard until after the SSE headers are flushed.
-   */
   async askStream(input: AskInput): Promise<RagStreamResult> {
-    const { messages, citations, isFirstTurn } = await this.prepare(input);
-    const conversationId = input.conversationId;
+    const { messages, citations, isFirstTurn, documentId } = await this.prepare(input);
+    const conversationId = await this.resolveConversationId(input, documentId);
     return {
       citations,
       conversationId,
       tokens: this.ollamaService.chatStream(messages),
-      onComplete: conversationId
-        ? async (answer: string) => {
-            await this.conversationService.saveTurn({
-              conversationId,
-              userId: input.userId,
-              question: input.question,
-              answer,
-              citations,
-              isFirstTurn,
-            });
-          }
-        : undefined,
+      onComplete: async (answer: string) => {
+        await this.conversationService.saveTurn({
+          conversationId,
+          userId: input.userId,
+          question: input.question,
+          answer,
+          citations,
+          isFirstTurn,
+        });
+      },
     };
+  }
+
+  private async resolveConversationId(input: AskInput, documentId?: string): Promise<string> {
+    if (input.conversationId) {
+      return input.conversationId;
+    }
+    const conversation = await this.conversationService.create(input.userId, {
+      documentId: documentId ?? null,
+    });
+    return conversation.id;
   }
 
   private async prepare(input: AskInput): Promise<{
@@ -123,7 +125,7 @@ export class RagService {
       userId: input.userId,
       query: searchQuery,
       topK: input.topK,
-      documentId: input.documentId,
+      documentId,
     });
     if (retrieved.length === 0) {
       throw new AppError(
