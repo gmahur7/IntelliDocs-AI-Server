@@ -2,14 +2,22 @@ import { HTTP_STATUS } from "@constants/http-status";
 import { RetrievalService } from "@services/retrieval.service";
 import { OllamaService } from "@services/ollama.service";
 import type { OllamaChatMessage } from "../types/ollama.types";
-import type { AskQuestionResponse, RagCitation, RagStreamResult } from "../types/rag.types";
+import type {
+  AskQuestionResponse,
+  ChatTurn,
+  RagCitation,
+  RagStreamResult,
+} from "../types/rag.types";
 import { AppError } from "@utils/app-error";
+import { ConversationService } from "./conversation.service";
+import { CondenseService } from "./condense.service";
 
 type AskInput = {
   userId: string;
   question: string;
   documentId?: string;
   topK?: number;
+  conversationId?: string;
 };
 
 function formatPageLabel(pageStart: number | null, pageEnd: number | null): string {
@@ -41,12 +49,24 @@ export class RagService {
   constructor(
     private readonly retrievalService: RetrievalService = new RetrievalService(),
     private readonly ollamaService: OllamaService = new OllamaService(),
+    private readonly conversationService: ConversationService = new ConversationService(),
+    private readonly condenseService: CondenseService = new CondenseService(),
   ) {}
 
   async ask(input: AskInput): Promise<AskQuestionResponse> {
-    const { messages, citations } = await this.prepare(input);
+    const { messages, citations, isFirstTurn } = await this.prepare(input);
     const answer = await this.ollamaService.chat(messages);
-    return { answer, citations };
+    if (input.conversationId) {
+      await this.conversationService.saveTurn({
+        conversationId: input.conversationId,
+        userId: input.userId,
+        question: input.question,
+        answer,
+        citations,
+        isFirstTurn,
+      });
+    }
+    return { answer, citations, conversationId: input.conversationId };
   }
 
   /**
@@ -55,16 +75,53 @@ export class RagService {
    * async generator instead would defer that guard until after the SSE headers are flushed.
    */
   async askStream(input: AskInput): Promise<RagStreamResult> {
-    const { messages, citations } = await this.prepare(input);
-    return { citations, tokens: this.ollamaService.chatStream(messages) };
+    const { messages, citations, isFirstTurn } = await this.prepare(input);
+    const conversationId = input.conversationId;
+    return {
+      citations,
+      conversationId,
+      tokens: this.ollamaService.chatStream(messages),
+      onComplete: conversationId
+        ? async (answer: string) => {
+            await this.conversationService.saveTurn({
+              conversationId,
+              userId: input.userId,
+              question: input.question,
+              answer,
+              citations,
+              isFirstTurn,
+            });
+          }
+        : undefined,
+    };
   }
 
-  private async prepare(
-    input: AskInput,
-  ): Promise<{ messages: OllamaChatMessage[]; citations: RagCitation[] }> {
+  private async prepare(input: AskInput): Promise<{
+    messages: OllamaChatMessage[];
+    citations: RagCitation[];
+    history: ChatTurn[];
+    isFirstTurn: boolean;
+    documentId?: string;
+  }> {
+    let history: ChatTurn[] = [];
+    let isFirstTurn = true;
+    let documentId = input.documentId;
+
+    if (input.conversationId) {
+      const conversation = await this.conversationService.requireOwned(
+        input.conversationId,
+        input.userId,
+      );
+      history = await this.conversationService.getHistory(input.conversationId);
+      isFirstTurn = history.length === 0;
+      documentId = input.documentId ?? conversation.documentId ?? undefined;
+    }
+
+    const searchQuery = await this.condenseService.condense(history, input.question);
+
     const retrieved = await this.retrievalService.retrieveTopK({
       userId: input.userId,
-      query: input.question,
+      query: searchQuery,
       topK: input.topK,
       documentId: input.documentId,
     });
@@ -88,6 +145,7 @@ export class RagService {
           content:
             "You must answer only from the provided context. Do not use outside knowledge and do not hallucinate.",
         },
+        ...history.map((turn) => ({ role: turn.role, content: turn.content })),
         {
           role: "user",
           content: prompt,
@@ -100,6 +158,9 @@ export class RagService {
         pageEnd: chunk.pageEnd,
         score: chunk.score,
       })),
+      history,
+      isFirstTurn,
+      documentId,
     };
   }
 }

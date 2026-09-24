@@ -18,7 +18,11 @@ const ingestProducer = new IngestProducer();
 
 export const askQuestion = asyncHandler(
   async (
-    req: Request<unknown, unknown, { question: string; documentId?: string; topK?: number }>,
+    req: Request<
+      unknown,
+      unknown,
+      { question: string; documentId?: string; topK?: number; conversationId?: string }
+    >,
     res: Response,
   ): Promise<void> => {
     if (!req.user) {
@@ -29,6 +33,7 @@ export const askQuestion = asyncHandler(
       question: req.body.question,
       documentId: req.body.documentId,
       topK: req.body.topK,
+      conversationId: req.body.conversationId,
     });
     sendSuccess(res, HTTP_STATUS.OK, data);
   },
@@ -36,27 +41,37 @@ export const askQuestion = asyncHandler(
 
 export const askQuestionStream = asyncHandler(
   async (
-    req: Request<unknown, unknown, { question: string; documentId?: string; topK?: number }>,
+    req: Request<
+      unknown,
+      unknown,
+      { question: string; documentId?: string; topK?: number; conversationId?: string }
+    >,
     res: Response,
   ): Promise<void> => {
     if (!req.user) {
       throw new AppError("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
     }
 
-    const { citations, tokens } = await ragService.askStream({
+    const { citations, tokens, conversationId, onComplete } = await ragService.askStream({
       userId: req.user.id,
       question: req.body.question,
       documentId: req.body.documentId,
       topK: req.body.topK,
+      conversationId: req.body.conversationId,
     });
 
     initSse(res);
     try {
+      let answer = "";
       for await (const text of tokens) {
+        answer += text;
         sendSseEvent(res, "token", { text });
       }
+      if (onComplete) {
+        await onComplete(answer);
+      }
       sendSseEvent(res, "citations", { citations });
-      sendSseEvent(res, "done", {});
+      sendSseEvent(res, "done", { conversationId });
     } catch (error) {
       logger.error({ err: error, path: req.originalUrl }, "Ask stream failed");
       sendSseEvent(res, "error", {

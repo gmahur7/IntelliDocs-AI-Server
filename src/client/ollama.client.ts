@@ -34,7 +34,7 @@ export class OllamaClient {
       messages,
       stream: false,
       options: {
-        num_ctx: 2048,
+        num_ctx: env.OLLAMA_NUM_CTX,
       },
     };
 
@@ -52,7 +52,7 @@ export class OllamaClient {
       messages,
       stream: true,
       options: {
-        num_ctx: 2048,
+        num_ctx: env.OLLAMA_NUM_CTX,
       },
     };
 

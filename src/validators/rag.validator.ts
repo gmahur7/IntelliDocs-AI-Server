@@ -3,6 +3,7 @@ import { z } from "zod";
 export const askQuestionSchema = z.object({
   question: z.string().trim().min(1, "question is required").max(2000, "question is too long"),
   documentId: z.string().uuid("documentId must be a valid UUID").optional(),
+  conversationId: z.string().uuid("conversationId must be a valid UUID").optional(),
   topK: z.coerce
     .number()
     .int()

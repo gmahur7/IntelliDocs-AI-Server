@@ -64,6 +64,10 @@ const envSchema = z.object({
   RAG_DEFAULT_TOP_K: z.coerce.number().int().positive().default(5),
   RAG_MIN_PAGE_TEXT_CHARS: z.coerce.number().int().nonnegative().default(12),
   RAG_MAX_SCANNED_PAGE_RATIO: z.coerce.number().min(0).max(1).default(0.8),
+
+  OLLAMA_NUM_CTX: z.coerce.number().int().positive().default(4096),
+  RAG_MAX_HISTORY_MESSAGES: z.coerce.number().int().nonnegative().default(10),
+  RAG_MAX_HISTORY_TOKENS: z.coerce.number().int().nonnegative().default(1200),
 });
 
 function b2S3RegionFromEndpoint(endpoint: string): string | null {
