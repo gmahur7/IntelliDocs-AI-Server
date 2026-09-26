@@ -19,45 +19,51 @@ enum DocumentStatus {
   FAILED
 }
 
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
 model User {
-  id         String    @id @default(uuid())
-  firstName  String
-  lastName   String
-  email      String    @unique
-  password   String?
-  role       Role      @default(USER)
-  status     String    @default("active")
-  isVerified Boolean   @default(false)
-  isActive   Boolean   @default(true)
-  isDeleted  Boolean   @default(false)
-  lastLoginAt DateTime?
-  lastLoginIp String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  documents  Document[]
+  id            String         @id @default(uuid())
+  firstName     String
+  lastName      String
+  email         String         @unique
+  password      String?
+  role          Role           @default(USER)
+  status        String         @default("active")
+  isVerified    Boolean        @default(false)
+  isActive      Boolean        @default(true)
+  isDeleted     Boolean        @default(false)
+  lastLoginAt   DateTime?
+  lastLoginIp   String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  documents     Document[]
+  conversations Conversation[]
 }
 
 model Document {
-  id         String         @id @default(uuid())
-  userId     String
-  user       User           @relation(fields: [userId], references: [id])
-  fileKey    String         @unique
-  fileUrl    String
-  mimeType   String
-  status     DocumentStatus @default(PENDING)
-  error      String?
-  warning    String?
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-  chunks     DocumentChunk[]
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id])
+  fileKey   String          @unique
+  fileUrl   String
+  mimeType  String
+  status    DocumentStatus  @default(PENDING)
+  error     String?
+  warning   String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  chunks    DocumentChunk[]
 
   @@index([userId, status])
 }
 
 model DocumentChunk {
-  id         String    @id @default(uuid())
+  id         String                     @id @default(uuid())
   documentId String
-  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  document   Document                   @relation(fields: [documentId], references: [id], onDelete: Cascade)
   userId     String
   seq        Int
   text       String
@@ -65,9 +71,40 @@ model DocumentChunk {
   pageStart  Int?
   pageEnd    Int?
   embedding  Unsupported("vector(768)")
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime                   @default(now())
 
-  @@index([documentId, seq])
   @@unique([documentId, seq])
+  @@index([documentId, seq])
   @@index([userId, documentId])
 }
+
+model Conversation {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  title      String?
+  documentId String?
+  messages   Message[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  role           MessageRole
+  content        String
+  citations      Json?
+  tokenCount     Int
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+

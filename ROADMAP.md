@@ -42,9 +42,11 @@ until the full LLM response is ready. Ollama supports `stream: true`.
 
 - [x] Stream tokens to the client via **Server-Sent Events** so answers render word-by-word.
 
-`POST /api/v1/ask/stream` emits `token` events as the model generates, then `citations`, then
-`done`; a mid-stream failure emits an `error` event. `POST /api/v1/ask` is unchanged and still
-returns the full answer in the JSON envelope. The client must use `fetch` + `ReadableStream`
+`POST /api/v1/ask/stream` emits a `start` event (`{ conversationId, citations }`) before
+generation begins, then `token` events as the model generates, then `done`
+(`{ conversationId }`); a mid-stream failure emits an `error` event and discards a conversation
+that was auto-created for that turn. `POST /api/v1/ask` is unchanged and still returns the full
+answer in the JSON envelope. The client must use `fetch` + `ReadableStream`
 rather than `EventSource`, which cannot POST or send an `Authorization` header.
 
 Not yet done, if this needs to survive a proxy or heavier use:
@@ -54,12 +56,22 @@ Not yet done, if this needs to survive a proxy or heavier use:
 
 ### 4. Conversational chat sessions (memory)
 
-`/ask` is currently stateless single-shot Q&A — follow-ups like _"and its pricing?"_ have
-no context.
+Follow-ups like _"and its pricing?"_ resolve against prior turns of the same conversation.
 
-- [ ] Add `Conversation` + `Message` tables.
-- [ ] Feed prior turns into the prompt.
-- [ ] Add a **query-condensing** step (rewrite a follow-up into a standalone question before retrieval).
+- [x] Add `Conversation` + `Message` tables.
+- [x] Feed prior turns into the prompt.
+- [x] Add a **query-condensing** step (rewrite a follow-up into a standalone question before retrieval).
+
+Both `/ask` and `/ask/stream` accept an optional `conversationId`; without one a conversation is
+created and its id returned. History is capped by `RAG_MAX_HISTORY_MESSAGES` and
+`RAG_MAX_HISTORY_TOKENS`. The title is set from the first question only when the conversation has
+no title yet. `/conversations` lists, reads, creates, and deletes conversations.
+
+Not yet done:
+
+- [ ] Drop refusal turns from replayed history, and skip condensing when the question has no
+      pronoun or ellipsis (see `docs/README.md` §14).
+- [ ] Cap the history budget from what remains of `OLLAMA_NUM_CTX` after the context blocks.
 
 ### 5. Hybrid search + reranking
 

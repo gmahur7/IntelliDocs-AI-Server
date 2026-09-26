@@ -23,4 +23,7 @@ export interface EnvironmentVariables {
   RAG_DEFAULT_TOP_K: number;
   RAG_MIN_PAGE_TEXT_CHARS: number;
   RAG_MAX_SCANNED_PAGE_RATIO: number;
+  OLLAMA_NUM_CTX: number;
+  RAG_MAX_HISTORY_MESSAGES: number;
+  RAG_MAX_HISTORY_TOKENS: number;
 }
