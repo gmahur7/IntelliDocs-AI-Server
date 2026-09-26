@@ -44,6 +44,12 @@ export class ConversationService {
     }
   }
 
+  // Removes a conversation that never received a turn, e.g. one auto-created by /ask whose model
+  // call then failed. A conversation that already has messages is left untouched.
+  async deleteIfEmpty(conversationId: string, userId: string): Promise<void> {
+    await this.conversationRepository.deleteIfEmpty(conversationId, userId);
+  }
+
   async getHistory(conversationId: string): Promise<ChatTurn[]> {
     if (env.RAG_MAX_HISTORY_MESSAGES === 0) {
       return [];
@@ -80,7 +86,9 @@ export class ConversationService {
     question: string;
     answer: string;
     citations: RagCitation[];
-    isFirstTurn: boolean;
+    // True only when the conversation has no title yet, so a user-supplied title is never
+    // overwritten and a later turn never renames the conversation.
+    needsTitle: boolean;
   }): Promise<void> {
     await this.conversationRepository.appendTurns({
       conversationId: params.conversationId,
@@ -99,7 +107,7 @@ export class ConversationService {
         citations: params.citations as unknown as Prisma.InputJsonValue,
         tokenCount: this.tokenizerService.countTokens(params.answer),
       },
-      ...(params.isFirstTurn ? { title: params.question.slice(0, 60) } : {}),
+      ...(params.needsTitle ? { title: params.question.slice(0, 60) } : {}),
     });
   }
 }

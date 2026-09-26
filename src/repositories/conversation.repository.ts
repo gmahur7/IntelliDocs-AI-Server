@@ -22,10 +22,16 @@ export class ConversationRepository {
     return prisma.conversation.deleteMany({ where: { id, userId } });
   }
 
+  async deleteIfEmpty(id: string, userId: string) {
+    return prisma.conversation.deleteMany({ where: { id, userId, messages: { none: {} } } });
+  }
+
+  // Both messages of a turn are written in one transaction and can share a createdAt
+  // (millisecond precision), so role breaks the tie: the enum declares USER before ASSISTANT.
   async findRecentMessages(conversationId: string, limit: number) {
     const rows = await prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { role: "desc" }],
       take: limit,
     });
     return rows.reverse();
@@ -34,7 +40,7 @@ export class ConversationRepository {
   async findAllMessages(conversationId: string) {
     return prisma.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ createdAt: "asc" }, { role: "asc" }],
     });
   }
 

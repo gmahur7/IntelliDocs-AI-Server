@@ -17,6 +17,8 @@ export type RagStreamResult = {
   tokens: AsyncIterable<string>;
   conversationId: string;
   onComplete: (answer: string) => Promise<void>;
+  // Call when the stream fails before onComplete; discards a conversation created for this turn.
+  onAbort: () => Promise<void>;
 };
 
 export type ChatTurn = {

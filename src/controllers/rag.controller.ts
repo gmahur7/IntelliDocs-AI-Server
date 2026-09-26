@@ -52,7 +52,7 @@ export const askQuestionStream = asyncHandler(
       throw new AppError("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
     }
 
-    const { citations, tokens, conversationId, onComplete } = await ragService.askStream({
+    const { citations, tokens, conversationId, onComplete, onAbort } = await ragService.askStream({
       userId: req.user.id,
       question: req.body.question,
       documentId: req.body.documentId,
@@ -62,16 +62,19 @@ export const askQuestionStream = asyncHandler(
 
     initSse(res);
     try {
+      // conversationId and citations are known before generation starts. Sending them first lets
+      // the client keep the thread even if the stream later fails, and render sources immediately.
+      sendSseEvent(res, "start", { conversationId, citations });
       let answer = "";
       for await (const text of tokens) {
         answer += text;
         sendSseEvent(res, "token", { text });
       }
       await onComplete(answer);
-      sendSseEvent(res, "citations", { citations });
       sendSseEvent(res, "done", { conversationId });
     } catch (error) {
       logger.error({ err: error, path: req.originalUrl }, "Ask stream failed");
+      await onAbort();
       sendSseEvent(res, "error", {
         status: error instanceof AppError ? error.statusCode : HTTP_STATUS.INTERNAL_SERVER_ERROR,
         message: error instanceof AppError ? error.message : "Streaming failed",

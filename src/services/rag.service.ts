@@ -1,3 +1,4 @@
+import { logger } from "@config/logger";
 import { HTTP_STATUS } from "@constants/http-status";
 import { RetrievalService } from "@services/retrieval.service";
 import { OllamaService } from "@services/ollama.service";
@@ -18,6 +19,12 @@ type AskInput = {
   documentId?: string;
   topK?: number;
   conversationId?: string;
+};
+
+type ResolvedConversation = {
+  conversationId: string;
+  // True when this request created the conversation, so a failed turn can discard it again.
+  created: boolean;
 };
 
 function formatPageLabel(pageStart: number | null, pageEnd: number | null): string {
@@ -54,23 +61,28 @@ export class RagService {
   ) {}
 
   async ask(input: AskInput): Promise<AskQuestionResponse> {
-    const { messages, citations, isFirstTurn, documentId } = await this.prepare(input);
-    const conversationId = await this.resolveConversationId(input, documentId);
-    const answer = await this.ollamaService.chat(messages);
-    await this.conversationService.saveTurn({
-      conversationId,
-      userId: input.userId,
-      question: input.question,
-      answer,
-      citations,
-      isFirstTurn,
-    });
-    return { answer, citations, conversationId };
+    const { messages, citations, needsTitle, documentId } = await this.prepare(input);
+    const { conversationId, created } = await this.resolveConversation(input, documentId);
+    try {
+      const answer = await this.ollamaService.chat(messages);
+      await this.conversationService.saveTurn({
+        conversationId,
+        userId: input.userId,
+        question: input.question,
+        answer,
+        citations,
+        needsTitle,
+      });
+      return { answer, citations, conversationId };
+    } catch (error) {
+      await this.discardIfCreated(conversationId, input.userId, created);
+      throw error;
+    }
   }
 
   async askStream(input: AskInput): Promise<RagStreamResult> {
-    const { messages, citations, isFirstTurn, documentId } = await this.prepare(input);
-    const conversationId = await this.resolveConversationId(input, documentId);
+    const { messages, citations, needsTitle, documentId } = await this.prepare(input);
+    const { conversationId, created } = await this.resolveConversation(input, documentId);
     return {
       citations,
       conversationId,
@@ -82,31 +94,53 @@ export class RagService {
           question: input.question,
           answer,
           citations,
-          isFirstTurn,
+          needsTitle,
         });
+      },
+      onAbort: async () => {
+        await this.discardIfCreated(conversationId, input.userId, created);
       },
     };
   }
 
-  private async resolveConversationId(input: AskInput, documentId?: string): Promise<string> {
+  private async resolveConversation(
+    input: AskInput,
+    documentId?: string,
+  ): Promise<ResolvedConversation> {
     if (input.conversationId) {
-      return input.conversationId;
+      return { conversationId: input.conversationId, created: false };
     }
     const conversation = await this.conversationService.create(input.userId, {
       documentId: documentId ?? null,
     });
-    return conversation.id;
+    return { conversationId: conversation.id, created: true };
+  }
+
+  // Cleanup must never mask the error that triggered it, so failures are logged, not thrown.
+  private async discardIfCreated(
+    conversationId: string,
+    userId: string,
+    created: boolean,
+  ): Promise<void> {
+    if (!created) {
+      return;
+    }
+    try {
+      await this.conversationService.deleteIfEmpty(conversationId, userId);
+    } catch (error) {
+      logger.error({ err: error, conversationId }, "Failed to discard empty conversation");
+    }
   }
 
   private async prepare(input: AskInput): Promise<{
     messages: OllamaChatMessage[];
     citations: RagCitation[];
     history: ChatTurn[];
-    isFirstTurn: boolean;
+    needsTitle: boolean;
     documentId?: string;
   }> {
     let history: ChatTurn[] = [];
-    let isFirstTurn = true;
+    let needsTitle = true;
     let documentId = input.documentId;
 
     if (input.conversationId) {
@@ -115,7 +149,7 @@ export class RagService {
         input.userId,
       );
       history = await this.conversationService.getHistory(input.conversationId);
-      isFirstTurn = history.length === 0;
+      needsTitle = conversation.title === null;
       documentId = input.documentId ?? conversation.documentId ?? undefined;
     }
 
@@ -161,7 +195,7 @@ export class RagService {
         score: chunk.score,
       })),
       history,
-      isFirstTurn,
+      needsTitle,
       documentId,
     };
   }

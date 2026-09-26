@@ -86,22 +86,27 @@ export class DocumentChunkRepository {
     documentId?: string;
   }): Promise<RetrievedChunk[]> {
     const vectorLiteral = `[${params.queryEmbedding.join(",")}]`;
-    const rows = await prisma.$queryRawUnsafe<RetrievedChunk[]>(
-      `
-      SELECT c.id, c.text, c."documentId", c."pageStart", c."pageEnd", (c.embedding <=> $1::vector) AS score
-      FROM "DocumentChunk" c
-      JOIN "Document" d ON d.id = c."documentId"
-      WHERE d."userId" = $2
-        AND d.status = 'READY'
-        AND ($3::text IS NULL OR d.id = $3::text)
-      ORDER BY c.embedding <=> $1::vector
-      LIMIT $4
-      `,
-      vectorLiteral,
-      params.userId,
-      params.documentId ?? null,
-      params.topK,
-    );
-    return rows;
+    return prisma.$transaction(async (tx) => {
+      // The HNSW index yields ef_search candidates before the WHERE clause runs, so a user with few
+      // chunks could get fewer than topK rows. Iterative scan (pgvector >= 0.8) keeps searching
+      // until LIMIT rows pass the filter. SET LOCAL scopes it to this transaction.
+      await tx.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan = relaxed_order`);
+      return tx.$queryRawUnsafe<RetrievedChunk[]>(
+        `
+        SELECT c.id, c.text, c."documentId", c."pageStart", c."pageEnd", (c.embedding <=> $1::vector) AS score
+        FROM "DocumentChunk" c
+        JOIN "Document" d ON d.id = c."documentId"
+        WHERE d."userId" = $2
+          AND d.status = 'READY'
+          AND ($3::text IS NULL OR d.id = $3::text)
+        ORDER BY c.embedding <=> $1::vector
+        LIMIT $4
+        `,
+        vectorLiteral,
+        params.userId,
+        params.documentId ?? null,
+        params.topK,
+      );
+    });
   }
 }
