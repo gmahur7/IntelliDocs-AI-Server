@@ -30,20 +30,27 @@ export class OllamaClient {
   }
 
   // Ollama's default temperature (0.8) makes grounded answers vary between runs; keep it low.
-  private chatOptions(): OllamaChatOptions {
+  // Callers override per call, e.g. the condenser wants temperature 0 and a short output cap.
+  private chatOptions(overrides?: OllamaChatOptions): OllamaChatOptions {
     return {
       num_ctx: env.OLLAMA_NUM_CTX,
+      num_predict: env.OLLAMA_NUM_PREDICT,
       temperature: env.OLLAMA_TEMPERATURE,
       top_p: 0.9,
+      ...overrides,
     };
   }
 
-  async chat(messages: OllamaChatMessage[]): Promise<OllamaChatResponse> {
+  async chat(
+    messages: OllamaChatMessage[],
+    options?: OllamaChatOptions,
+  ): Promise<OllamaChatResponse> {
     const requestBody: OllamaChatRequest = {
       model: this.chatModel,
       messages,
       stream: false,
-      options: this.chatOptions(),
+      keep_alive: env.OLLAMA_KEEP_ALIVE,
+      options: this.chatOptions(options),
     };
 
     try {
@@ -54,12 +61,16 @@ export class OllamaClient {
     }
   }
 
-  async *chatStream(messages: OllamaChatMessage[]): AsyncGenerator<OllamaChatStreamChunk> {
+  async *chatStream(
+    messages: OllamaChatMessage[],
+    options?: OllamaChatOptions,
+  ): AsyncGenerator<OllamaChatStreamChunk> {
     const requestBody: OllamaChatRequest = {
       model: this.chatModel,
       messages,
       stream: true,
-      options: this.chatOptions(),
+      keep_alive: env.OLLAMA_KEEP_ALIVE,
+      options: this.chatOptions(options),
     };
 
     let stream: Readable;
@@ -101,6 +112,7 @@ export class OllamaClient {
     const requestBody: OllamaEmbedRequest = {
       model: this.embedModel,
       input,
+      keep_alive: env.OLLAMA_KEEP_ALIVE,
     };
 
     try {

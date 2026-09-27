@@ -61,14 +61,22 @@ const envSchema = z.object({
   RABBITMQ_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
   RAG_CHUNK_SIZE: z.coerce.number().int().positive().default(900),
   RAG_CHUNK_OVERLAP: z.coerce.number().int().nonnegative().default(150),
-  RAG_DEFAULT_TOP_K: z.coerce.number().int().positive().default(5),
+  RAG_DEFAULT_TOP_K: z.coerce.number().int().positive().default(4),
   RAG_MIN_PAGE_TEXT_CHARS: z.coerce.number().int().nonnegative().default(12),
   RAG_MAX_SCANNED_PAGE_RATIO: z.coerce.number().min(0).max(1).default(0.8),
 
   OLLAMA_NUM_CTX: z.coerce.number().int().positive().default(8192),
   OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.1),
+  // Upper bound on answer tokens; also the room the source budget reserves for the answer.
+  OLLAMA_NUM_PREDICT: z.coerce.number().int().positive().default(512),
+  // How long Ollama keeps a model resident after a call. Reloading the chat model costs seconds.
+  OLLAMA_KEEP_ALIVE: trimString.pipe(z.string().min(1)).default("1h"),
+  // Messages loaded from a conversation (the condenser sees all of them, within the token budget).
   RAG_MAX_HISTORY_MESSAGES: z.coerce.number().int().nonnegative().default(10),
   RAG_MAX_HISTORY_TOKENS: z.coerce.number().int().nonnegative().default(1200),
+  // Messages the answer model sees. History is for resolving references, not facts, and every
+  // prompt token costs time on a CPU host, so this is kept small.
+  RAG_ANSWER_HISTORY_MESSAGES: z.coerce.number().int().nonnegative().default(4),
 
   // Task prefixes nomic-embed-text was trained on. Not trimmed: the trailing space is significant.
   // Changing either one invalidates every stored vector, so reindex all documents afterwards.

@@ -5,6 +5,7 @@ export interface OllamaChatMessage {
 
 export interface OllamaChatOptions {
   num_ctx?: number;
+  num_predict?: number;
   temperature?: number;
   top_p?: number;
 }
@@ -13,6 +14,7 @@ export interface OllamaChatRequest {
   model: string;
   messages: OllamaChatMessage[];
   stream: boolean;
+  keep_alive?: string;
   options?: OllamaChatOptions;
 }
 
@@ -32,6 +34,7 @@ export interface OllamaChatStreamChunk {
 export interface OllamaEmbedRequest {
   model: string;
   input: string | string[];
+  keep_alive?: string;
 }
 
 export interface OllamaEmbedResponse {

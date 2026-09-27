@@ -1,5 +1,5 @@
 import { OllamaClient } from "../client/ollama.client";
-import { OllamaChatMessage } from "../types/ollama.types";
+import { OllamaChatMessage, OllamaChatOptions } from "../types/ollama.types";
 
 export class OllamaService {
   private client: OllamaClient;
@@ -15,13 +15,16 @@ export class OllamaService {
     return response.message.content;
   }
 
-  async chat(messages: OllamaChatMessage[]): Promise<string> {
-    const response = await this.client.chat(messages);
+  async chat(messages: OllamaChatMessage[], options?: OllamaChatOptions): Promise<string> {
+    const response = await this.client.chat(messages, options);
     return response.message.content;
   }
 
-  async *chatStream(messages: OllamaChatMessage[]): AsyncGenerator<string> {
-    for await (const chunk of this.client.chatStream(messages)) {
+  async *chatStream(
+    messages: OllamaChatMessage[],
+    options?: OllamaChatOptions,
+  ): AsyncGenerator<string> {
+    for await (const chunk of this.client.chatStream(messages, options)) {
       const text = chunk.message?.content;
       if (text) {
         yield text;

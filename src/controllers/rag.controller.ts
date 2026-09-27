@@ -52,13 +52,16 @@ export const askQuestionStream = asyncHandler(
       throw new AppError("Unauthorized", HTTP_STATUS.UNAUTHORIZED);
     }
 
-    const { citations, tokens, conversationId, onComplete, onAbort } = await ragService.askStream({
-      userId: req.user.id,
-      question: req.body.question,
-      documentId: req.body.documentId,
-      topK: req.body.topK,
-      conversationId: req.body.conversationId,
-    });
+    const startedAt = Date.now();
+    const { citations, tokens, conversationId, trace, onComplete, onAbort } =
+      await ragService.askStream({
+        userId: req.user.id,
+        question: req.body.question,
+        documentId: req.body.documentId,
+        topK: req.body.topK,
+        conversationId: req.body.conversationId,
+      });
+    const prepareMs = Date.now() - startedAt;
 
     initSse(res);
     try {
@@ -66,10 +69,20 @@ export const askQuestionStream = asyncHandler(
       // the client keep the thread even if the stream later fails, and render sources immediately.
       sendSseEvent(res, "start", { conversationId, citations });
       let answer = "";
+      let answerTokens = 0;
+      let firstTokenMs: number | null = null;
       for await (const text of tokens) {
+        if (firstTokenMs === null) {
+          firstTokenMs = Date.now() - startedAt;
+        }
+        answerTokens += 1;
         answer += text;
         sendSseEvent(res, "token", { text });
       }
+      logger.info(
+        { ...trace, prepareMs, firstTokenMs, totalMs: Date.now() - startedAt, answerTokens },
+        "RAG timing",
+      );
       await onComplete(answer);
       sendSseEvent(res, "done", { conversationId });
     } catch (error) {

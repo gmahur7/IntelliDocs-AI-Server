@@ -11,6 +11,7 @@ import type {
   ChatTurn,
   RagCitation,
   RagStreamResult,
+  RagTrace,
 } from "../types/rag.types";
 import { AppError } from "@utils/app-error";
 import { ConversationService } from "./conversation.service";
@@ -33,9 +34,6 @@ type ResolvedConversation = {
 // Kept exact: clients may match on it to render a "not found" state.
 export const NOT_FOUND_ANSWER = "I could not find this in your uploaded documents.";
 
-// Tokens held back from the context window for the model's answer. The tokenizer is an
-// approximation of the chat model's own, so this also absorbs the counting error.
-const ANSWER_RESERVE_TOKENS = 512;
 // Rough cost of one "[Source N | Document M | p.4]" label plus its blank-line separator.
 const SOURCE_LABEL_TOKENS = 16;
 
@@ -68,6 +66,19 @@ function formatPageLabel(pageStart: number | null, pageEnd: number | null): stri
 
 function buildUserPrompt(question: string, sources: string): string {
   return ["SOURCES:", sources, "", `QUESTION: ${question}`].join("\n");
+}
+
+/**
+ * The answer model only needs enough history to resolve references, and every prompt token costs
+ * time on a CPU host, so it sees the last few messages. The condenser still gets the full history.
+ * Keeps the slice starting on a user turn so the roles alternate correctly.
+ */
+function lastMessages(history: ChatTurn[], limit: number): ChatTurn[] {
+  if (limit === 0) {
+    return [];
+  }
+  const tail = history.slice(-limit);
+  return tail.length > 0 && tail[0].role === "assistant" ? tail.slice(1) : tail;
 }
 
 /**
@@ -111,10 +122,19 @@ export class RagService {
   ) {}
 
   async ask(input: AskInput): Promise<AskQuestionResponse> {
-    const { messages, citations, needsTitle, documentId } = await this.prepare(input);
+    const { messages, citations, needsTitle, documentId, trace } = await this.prepare(input);
     const { conversationId, created } = await this.resolveConversation(input, documentId);
     try {
+      const chatStartedAt = Date.now();
       const answer = await this.ollamaService.chat(messages);
+      logger.info(
+        {
+          ...trace,
+          chatMs: Date.now() - chatStartedAt,
+          answerTokens: this.tokenizerService.countTokens(answer),
+        },
+        "RAG timing",
+      );
       await this.conversationService.saveTurn({
         conversationId,
         userId: input.userId,
@@ -131,11 +151,12 @@ export class RagService {
   }
 
   async askStream(input: AskInput): Promise<RagStreamResult> {
-    const { messages, citations, needsTitle, documentId } = await this.prepare(input);
+    const { messages, citations, needsTitle, documentId, trace } = await this.prepare(input);
     const { conversationId, created } = await this.resolveConversation(input, documentId);
     return {
       citations,
       conversationId,
+      trace,
       tokens: this.ollamaService.chatStream(messages),
       onComplete: async (answer: string) => {
         await this.conversationService.saveTurn({
@@ -208,6 +229,7 @@ export class RagService {
     citations: RagCitation[];
     needsTitle: boolean;
     documentId?: string;
+    trace: RagTrace;
   }> {
     let history: ChatTurn[] = [];
     let needsTitle = true;
@@ -223,14 +245,18 @@ export class RagService {
       documentId = input.documentId ?? conversation.documentId ?? undefined;
     }
 
+    const condenseStartedAt = Date.now();
     const searchQuery = await this.condenseService.condense(history, input.question);
+    const condenseMs = Date.now() - condenseStartedAt;
 
+    const retrievalStartedAt = Date.now();
     const retrieved = await this.retrievalService.retrieveTopK({
       userId: input.userId,
       query: searchQuery,
       topK: input.topK,
       documentId,
     });
+    const retrievalMs = Date.now() - retrievalStartedAt;
     if (retrieved.length === 0) {
       throw new AppError(
         "No indexed content found for this query. Upload and process documents first.",
@@ -238,21 +264,27 @@ export class RagService {
       );
     }
 
+    const answerHistory = lastMessages(history, env.RAG_ANSWER_HISTORY_MESSAGES);
     const fixedTokens =
       this.tokenizerService.countTokens(SYSTEM_PROMPT) +
       this.tokenizerService.countTokens(input.question) +
-      history.reduce((sum, turn) => sum + this.tokenizerService.countTokens(turn.content), 0) +
-      ANSWER_RESERVE_TOKENS;
+      answerHistory.reduce(
+        (sum, turn) => sum + this.tokenizerService.countTokens(turn.content),
+        0,
+      ) +
+      env.OLLAMA_NUM_PREDICT;
     const selected = inReadingOrder(
       this.selectWithinBudget(retrieved, Math.max(0, env.OLLAMA_NUM_CTX - fixedTokens)),
     );
 
+    const messages: OllamaChatMessage[] = [
+      { role: "system", content: SYSTEM_PROMPT },
+      ...answerHistory.map((turn) => ({ role: turn.role, content: turn.content })),
+      { role: "user", content: buildUserPrompt(input.question, renderSources(selected)) },
+    ];
+
     return {
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        ...history.map((turn) => ({ role: turn.role, content: turn.content })),
-        { role: "user", content: buildUserPrompt(input.question, renderSources(selected)) },
-      ],
+      messages,
       // Same order as the rendered sources, so citations[i] is "Source i+1" in the prompt.
       citations: selected.map((chunk) => ({
         chunkId: chunk.id,
@@ -263,6 +295,17 @@ export class RagService {
       })),
       needsTitle,
       documentId,
+      trace: {
+        condensed: searchQuery !== input.question,
+        condenseMs,
+        retrievalMs,
+        historyMessages: answerHistory.length,
+        sources: selected.length,
+        promptTokens: messages.reduce(
+          (sum, message) => sum + this.tokenizerService.countTokens(message.content),
+          0,
+        ),
+      },
     };
   }
 }
