@@ -3,13 +3,17 @@ export interface OllamaChatMessage {
   content: string;
 }
 
+export interface OllamaChatOptions {
+  num_ctx?: number;
+  temperature?: number;
+  top_p?: number;
+}
+
 export interface OllamaChatRequest {
   model: string;
   messages: OllamaChatMessage[];
   stream: boolean;
-  options?: {
-    num_ctx?: number;
-  };
+  options?: OllamaChatOptions;
 }
 
 export interface OllamaChatResponse {

@@ -24,6 +24,9 @@ export interface EnvironmentVariables {
   RAG_MIN_PAGE_TEXT_CHARS: number;
   RAG_MAX_SCANNED_PAGE_RATIO: number;
   OLLAMA_NUM_CTX: number;
+  OLLAMA_TEMPERATURE: number;
   RAG_MAX_HISTORY_MESSAGES: number;
   RAG_MAX_HISTORY_TOKENS: number;
+  RAG_EMBED_QUERY_PREFIX: string;
+  RAG_EMBED_DOCUMENT_PREFIX: string;
 }

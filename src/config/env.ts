@@ -44,7 +44,7 @@ const envSchema = z.object({
     .default("http://localhost:11434"),
   OLLAMA_CHAT_MODEL: trimString
     .pipe(z.string().min(1, "OLLAMA_CHAT_MODEL is required"))
-    .default("llama3.2:1b"),
+    .default("llama3.2:3b"),
   OLLAMA_EMBED_MODEL: trimString
     .pipe(z.string().min(1, "OLLAMA_EMBED_MODEL is required"))
     .default("nomic-embed-text"),
@@ -65,9 +65,15 @@ const envSchema = z.object({
   RAG_MIN_PAGE_TEXT_CHARS: z.coerce.number().int().nonnegative().default(12),
   RAG_MAX_SCANNED_PAGE_RATIO: z.coerce.number().min(0).max(1).default(0.8),
 
-  OLLAMA_NUM_CTX: z.coerce.number().int().positive().default(4096),
+  OLLAMA_NUM_CTX: z.coerce.number().int().positive().default(8192),
+  OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.1),
   RAG_MAX_HISTORY_MESSAGES: z.coerce.number().int().nonnegative().default(10),
   RAG_MAX_HISTORY_TOKENS: z.coerce.number().int().nonnegative().default(1200),
+
+  // Task prefixes nomic-embed-text was trained on. Not trimmed: the trailing space is significant.
+  // Changing either one invalidates every stored vector, so reindex all documents afterwards.
+  RAG_EMBED_QUERY_PREFIX: z.string().default("search_query: "),
+  RAG_EMBED_DOCUMENT_PREFIX: z.string().default("search_document: "),
 });
 
 function b2S3RegionFromEndpoint(endpoint: string): string | null {

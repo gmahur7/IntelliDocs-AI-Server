@@ -49,6 +49,18 @@ export async function getChannel(): Promise<Channel> {
   return channel;
 }
 
+// For one-shot scripts that must exit cleanly; the API and worker keep their connection open.
+export async function closeRabbitMq(): Promise<void> {
+  if (channel) {
+    await channel.close();
+    channel = null;
+  }
+  if (connection) {
+    await connection.close();
+    connection = null;
+  }
+}
+
 export async function publishIngestMessage(
   message: object,
   options?: Options.Publish,

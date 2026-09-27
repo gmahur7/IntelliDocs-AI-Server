@@ -20,7 +20,7 @@ export class RetrievalService {
 
   async retrieveTopK(input: RetrieveTopKInput): Promise<RetrievedChunk[]> {
     const topK = Math.max(1, Math.min(input.topK ?? env.RAG_DEFAULT_TOP_K, 12));
-    const queryEmbedding = await this.embeddingService.embedText(input.query);
+    const queryEmbedding = await this.embeddingService.embedQuery(input.query);
     return this.documentChunkRepository.findTopKByVector({
       userId: input.userId,
       queryEmbedding,

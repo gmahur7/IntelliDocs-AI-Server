@@ -16,6 +16,7 @@ export type RetrievedChunk = {
   id: string;
   text: string;
   documentId: string;
+  seq: number;
   pageStart: number | null;
   pageEnd: number | null;
   score: number;
@@ -93,7 +94,7 @@ export class DocumentChunkRepository {
       await tx.$executeRawUnsafe(`SET LOCAL hnsw.iterative_scan = relaxed_order`);
       return tx.$queryRawUnsafe<RetrievedChunk[]>(
         `
-        SELECT c.id, c.text, c."documentId", c."pageStart", c."pageEnd", (c.embedding <=> $1::vector) AS score
+        SELECT c.id, c.text, c."documentId", c.seq, c."pageStart", c."pageEnd", (c.embedding <=> $1::vector) AS score
         FROM "DocumentChunk" c
         JOIN "Document" d ON d.id = c."documentId"
         WHERE d."userId" = $2

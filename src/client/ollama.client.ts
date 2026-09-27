@@ -2,6 +2,7 @@ import { Readable } from "node:stream";
 import axios, { AxiosError, AxiosInstance } from "axios";
 import {
   OllamaChatMessage,
+  OllamaChatOptions,
   OllamaChatRequest,
   OllamaChatResponse,
   OllamaChatStreamChunk,
@@ -28,14 +29,21 @@ export class OllamaClient {
     this.embedModel = env.OLLAMA_EMBED_MODEL;
   }
 
+  // Ollama's default temperature (0.8) makes grounded answers vary between runs; keep it low.
+  private chatOptions(): OllamaChatOptions {
+    return {
+      num_ctx: env.OLLAMA_NUM_CTX,
+      temperature: env.OLLAMA_TEMPERATURE,
+      top_p: 0.9,
+    };
+  }
+
   async chat(messages: OllamaChatMessage[]): Promise<OllamaChatResponse> {
     const requestBody: OllamaChatRequest = {
       model: this.chatModel,
       messages,
       stream: false,
-      options: {
-        num_ctx: env.OLLAMA_NUM_CTX,
-      },
+      options: this.chatOptions(),
     };
 
     try {
@@ -51,9 +59,7 @@ export class OllamaClient {
       model: this.chatModel,
       messages,
       stream: true,
-      options: {
-        num_ctx: env.OLLAMA_NUM_CTX,
-      },
+      options: this.chatOptions(),
     };
 
     let stream: Readable;

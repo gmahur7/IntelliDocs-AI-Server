@@ -64,7 +64,9 @@ export class IngestWorker {
           "Document produced no indexable chunks after parsing. It may be empty or corrupt.",
         );
       }
-      const embeddings = await this.embeddingService.embedMany(chunks.map((chunk) => chunk.text));
+      const embeddings = await this.embeddingService.embedDocuments(
+        chunks.map((chunk) => chunk.text),
+      );
       await this.documentChunkRepository.deleteByDocumentId(payload.documentId);
       await this.documentChunkRepository.createMany(
         chunks.map((chunk, index) => ({

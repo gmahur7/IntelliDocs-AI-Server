@@ -53,7 +53,7 @@ services:
         condition: service_completed_successfully
     environment:
       OLLAMA_HOST: http://ollama:11434
-      OLLAMA_CHAT_MODEL: llama3.2:1b
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -100,7 +100,7 @@ services:
       RABBITMQ_URL: amqp://app:app@rabbitmq:5672
       DATABASE_URL: postgresql://postgres:postgres@vector-db:5432/app_db?schema=public&sslmode=disable
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_CHAT_MODEL: llama3.2:1b
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
     ports:
       - "4000:4000"
     command: sh -c "pnpm exec prisma migrate deploy && pnpm run prisma:generate && pnpm run start"
@@ -126,7 +126,7 @@ services:
       RABBITMQ_URL: amqp://app:app@rabbitmq:5672
       DATABASE_URL: postgresql://postgres:postgres@vector-db:5432/app_db?schema=public&sslmode=disable
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_CHAT_MODEL: llama3.2:1b
+      OLLAMA_CHAT_MODEL: ${OLLAMA_CHAT_MODEL:-llama3.2:3b}
     command: sh -c "pnpm exec prisma migrate deploy && pnpm run prisma:generate && pnpm run worker:ingest"
 
 volumes:
