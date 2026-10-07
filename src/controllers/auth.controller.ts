@@ -13,7 +13,7 @@ const REFRESH_TOKEN_COOKIE = "refreshToken";
 const refreshCookieOptions: CookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === "production",
-  sameSite: "strict",
+  sameSite: "lax",
   path: "/api/v1/auth",
 };
 
