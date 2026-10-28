@@ -14,7 +14,7 @@ router.use("/health", healthRouter);
 router.use("/auth", authRouter);
 router.use("/users", userRouter);
 router.use("/files", requireAuth, fileRouter);
-router.use("/", ragRouter);
-router.use("/conversations", conversationRouter);
+router.use("/", requireAuth, ragRouter);
+router.use("/conversations", requireAuth, conversationRouter);
 
 export { router };
