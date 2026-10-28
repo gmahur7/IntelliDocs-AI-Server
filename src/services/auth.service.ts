@@ -24,6 +24,8 @@ interface SigninInput {
 
 interface AuthResult {
   token: string;
+  refreshToken: string;
+  refreshTokenExpiresAt: Date;
   user: {
     id: string;
     firstName: string;
@@ -75,6 +77,32 @@ export class AuthService {
     );
   }
 
+  private signRefreshToken(userId: string): { token: string; expiresAt: Date } {
+    const expiresIn = env.JWT_REFRESH_EXPIRES_IN as jwt.SignOptions["expiresIn"];
+    const token = jwt.sign({ sub: userId, type: "refresh" }, env.JWT_REFRESH_SECRET, {
+      expiresIn,
+    });
+    const { exp } = jwt.decode(token) as jwt.JwtPayload;
+    return { token, expiresAt: new Date((exp ?? 0) * 1000) };
+  }
+
+  private issueTokens(user: User): AuthResult {
+    const token = this.signAccessToken({
+      sub: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+    });
+    const refresh = this.signRefreshToken(user.id);
+    return {
+      token,
+      refreshToken: refresh.token,
+      refreshTokenExpiresAt: refresh.expiresAt,
+      user: toPublicUser(user),
+    };
+  }
+
   async signup(input: SignupInput): Promise<AuthResult> {
     const existingUser = await this.userRepository.findByEmail(input.email);
     if (existingUser) {
@@ -88,17 +116,7 @@ export class AuthService {
       password: passwordHash,
       role: Role.USER,
     });
-    const token = this.signAccessToken({
-      sub: user.id,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-    });
-    return {
-      token,
-      user: toPublicUser(user),
-    };
+    return this.issueTokens(user);
   }
 
   async signin(input: SigninInput, clientIp?: string | null): Promise<AuthResult> {
@@ -120,17 +138,30 @@ export class AuthService {
       lastLoginAt: new Date(),
       lastLoginIp: clientIp ?? undefined,
     });
-    const token = this.signAccessToken({
-      sub: updated.id,
-      email: updated.email,
-      firstName: updated.firstName,
-      lastName: updated.lastName,
-      role: updated.role,
-    });
-    return {
-      token,
-      user: toPublicUser(updated),
-    };
+    return this.issueTokens(updated);
+  }
+
+  async refresh(refreshToken: string | undefined): Promise<AuthResult> {
+    if (!refreshToken) {
+      throw new AppError("Refresh token missing", HTTP_STATUS.UNAUTHORIZED);
+    }
+    let payload: jwt.JwtPayload;
+    try {
+      payload = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as jwt.JwtPayload;
+    } catch {
+      throw new AppError("Invalid or expired refresh token", HTTP_STATUS.UNAUTHORIZED);
+    }
+    if (typeof payload.sub !== "string" || payload.type !== "refresh") {
+      throw new AppError("Invalid refresh token", HTTP_STATUS.UNAUTHORIZED);
+    }
+    const user = await this.userRepository.findById(payload.sub);
+    if (!user || user.isDeleted) {
+      throw new AppError("Account not found", HTTP_STATUS.UNAUTHORIZED);
+    }
+    if (!user.isActive) {
+      throw new AppError("Account is inactive", HTTP_STATUS.FORBIDDEN);
+    }
+    return this.issueTokens(user);
   }
 
   verifyAccessToken(token: string): JwtPayload {

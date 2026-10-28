@@ -4,6 +4,8 @@ export interface EnvironmentVariables {
   NODE_ENV: "development" | "test" | "production";
   JWT_ACCESS_SECRET: string;
   JWT_ACCESS_EXPIRES_IN: string;
+  JWT_REFRESH_SECRET: string;
+  JWT_REFRESH_EXPIRES_IN: string;
   B2_KEY_ID: string;
   B2_APPLICATION_KEY: string;
   B2_BUCKET_NAME: string;

@@ -34,6 +34,12 @@ const envSchema = z.object({
     z.string().min(32, "JWT_ACCESS_SECRET must be at least 32 chars"),
   ),
   JWT_ACCESS_EXPIRES_IN: trimString.pipe(z.string().min(1, "JWT_ACCESS_EXPIRES_IN is required")),
+  JWT_REFRESH_SECRET: trimString.pipe(
+    z.string().min(32, "JWT_REFRESH_SECRET must be at least 32 chars"),
+  ),
+  JWT_REFRESH_EXPIRES_IN: trimString
+    .pipe(z.string().min(1, "JWT_REFRESH_EXPIRES_IN is required"))
+    .default("7d"),
   B2_KEY_ID: trimB2Credential.pipe(z.string().min(1, "B2_KEY_ID is required")),
   B2_APPLICATION_KEY: trimB2Credential.pipe(z.string().min(1, "B2_APPLICATION_KEY is required")),
   B2_BUCKET_NAME: trimString.pipe(z.string().min(1, "B2_BUCKET_NAME is required")),

@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import { me, signin, signout, signup } from "@controllers/auth.controller";
+import { me, refresh, signin, signout, signup } from "@controllers/auth.controller";
 import { requireAuth } from "@middlewares/auth.middleware";
 import { validateRequest } from "@middlewares/validate-request";
 import { signinSchema, signupSchema } from "@validators/auth.validator";
@@ -9,6 +9,7 @@ const authRouter = Router();
 
 authRouter.post("/sign-up", validateRequest({ body: signupSchema }), signup);
 authRouter.post("/sign-in", validateRequest({ body: signinSchema }), signin);
+authRouter.post("/refresh", refresh);
 authRouter.post("/sign-out", requireAuth, signout);
 authRouter.get("/me", requireAuth, me);
 
